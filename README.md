@@ -1,8 +1,5 @@
 # 🖌️ 马良AI写作 - AI智能小说创作平台
 
-<p align="center">
-  <img src="assets/logo.jpg" alt="马良AI写作" width="200"/>
-</p>
 
 > 基于 Flutter (Web) + Spring Boot 的专业AI小说创作平台，集成先进AI模型，提供从内容创作、世界观构建到平台运维的完整工具链。
 
@@ -19,23 +16,46 @@
 
 马良AI写作是一个专为小说作者与平台运营者设计的智能化创作平台。它结合了强大的AI模型（支持OpenAI, Gemini, Anthropic等）与专业的在线富文本编辑器，旨在帮助作者激发灵感、提高写作效率、管理创作内容，同时为平台管理员提供了强大的后台管理与监控功能。
 
+官网地址[AINoval](https://maliangwriter.com/)
+
+<img src="assets/小说开始页面.jpg" alt="小说开始页面"  />![image-20250910191841271](assets/image-20250910191841271.png)
+
+![小说编辑区](assets/小说编辑区.jpg)
+
+![快捷预设和ai工具栏](assets/快捷预设和ai工具栏.jpg)
+
+![大纲与聊天](assets/大纲与聊天.jpg)
+
+![提示词管理](assets/提示词管理.jpg)
+
+
+
+![数据分析](assets/数据分析.jpg)
+
+
+
+![导入小说](assets/导入小说.jpg)
+
+
+
 ## ✨ 核心特色
 
--   🤖 **智能创作引擎**:
-    -   支持集成主流AI模型 (`GPT`, `Claude`, `Gemini` 等)。
+-   🤖 **沉浸式AI创作引擎**:
+    -   支持集成主流AI模型 (`GPT`, `Claude`, `Gemini`, `OpenRouter` 等)。
     -   提供续写、扩写、润色、翻译、角色设定、大纲生成等多种AI功能。
-    -   具备 RAG (检索增强生成) 能力，可基于小说内容进行知识问答，保证故事设定的连贯性。
+    -   小说编辑区集成方便的AI工具栏和AI聊天功能，方便沉浸式AI创作。
 
 -   🌍 **系统化世界观构建**:
-    -   AI辅助生成结构化的世界观设定树。
+    -   AI辅助生成结构化的世界观设定树，并支持设定节点的AI修改。
     -   支持对设定树进行增量式修改与迭代，并保存为历史快照。
-    -   可将设定快照恢复至作品，或在不同作品间复用。
+    -   可视化的设定UI，UX，支持多种设定分组形式。
 
 -   🔧 **灵活的模型与提示词管理**:
     -   **管理员**: 可配置公共大模型池，供所有用户使用。
     -   **用户**: 可配置私有API Key，使用个人专属模型。
-    -   **提示词管理**: 管理员可创建系统级预设，用户可创建个人预设，实现精细化内容生成。
-
+    -   **提示词管理**: 用户可以自己配置系统提示词和用户提示词，让提示词原生发送给大模型。
+    -   **预设管理**: 预设管理是指将提示词和其余指令，上下文，模型参数等关联起来，方便创作。
+    
 -   📊 **强大的管理与可观测性后台**:
     -   **LLM可观测性**: 详细记录每一次大模型调用，提供日志查询、统计分析（按用户/模型/功能）、成本追踪等功能。
     -   **用户管理**: 完整的用户与角色权限管理系统 (RBAC)。
@@ -46,10 +66,9 @@
 ### ✍️ 核心写作与编辑
 
 -   **层级化内容管理**: 采用 `作品 -> 卷 -> 章节 -> 场景` 的四级结构，清晰管理长篇内容。
--   **专业富文本编辑器**: 基于 `Flutter Quill`，提供稳定流畅的写作体验，支持丰富的格式选项。
--   **场景版本控制**: 自动为每次修改保存历史记录，支持版本对比（Diff）与一键恢复。
--   **灵活的内容组织**: 支持章节、场景的拖拽排序、删除、重命名等操作。
--   **多格式导入**: 支持 `.txt` 和 `.docx` 文件导入，智能解析目录结构，快速迁移现有作品。
+-   **专业富文本编辑器**: 基于 `Flutter Quill`，支持上千章节连续滚动，提供稳定流畅的写作体验，支持丰富的格式选项。
+-   **大纲总览**: 方便观察大纲内容和总览全局。
+-   **多格式导入**: 支持 `txt` 导入，智能解析目录结构，并在导入的过程，有后台大模型快速生成每章大纲，快速迁移现有作品。
 -   **多功能侧边栏**:
     -   **设定库**: 快速查阅和管理与当前作品关联的所有世界观设定。
     -   **片段管理**: 记录灵感片段、素材或待办事项。
@@ -57,6 +76,7 @@
 
 ### 🤖 智能AI助手
 
+-   **快速开始和黄金三章**: 由设定提示词快速开始设定生成，完成设定生成后，如果对结果不太满意，则可以微调设定节点，完成后，点击黄金三章，生成前三章大纲和摘要。
 -   **剧情推演 (Next Outline)**: AI根据上下文生成多个后续剧情大纲选项，辅助构思，并支持对不满意的选项进行独立重生成。
 -   **摘要与扩写**:
     -   **场景摘要**: AI自动为长篇场景内容生成精炼摘要。
@@ -64,7 +84,7 @@
 -   **通用内容优化**:
     -   **AI续写**: 在当前光标位置后，由AI继续生成内容。
     -   **AI润色**: 对选中文本进行风格、语法、表达等方面的优化。
--   **上下文感知聊天**: 在创作过程中随时与AI对话，获取灵感或解决创作难题。
+-   **AI聊天**: 在创作过程中随时与AI对话，获取灵感或解决创作难题。
 
 ### 🌍 世界观构建与设定管理
 
@@ -187,6 +207,7 @@ deploy/
 **对于 Ubuntu/Debian 系统:**
 
 1.  **安装 Docker Engine**:
+    
     ```bash
     # 更新软件包列表
     sudo apt-get update
@@ -205,11 +226,11 @@ deploy/
     sudo apt-get update
     sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin
     ```
-
+    
 2.  **安装 Docker Compose**:
-    ```bash
+```bash
     sudo apt-get install docker-compose-plugin -y
-    ```
+```
 
 3.  **将当前用户添加到 `docker` 组 (可选，但推荐)**:
     这样可以避免每次都使用 `sudo`。
@@ -251,15 +272,15 @@ deploy/
 
 2.  **构建镜像**
     在仓库根目录执行:
-    ```bash
+```bash
     docker compose -f deploy/open/docker-compose.yml build
-    ```
+```
 
 3.  **启动服务**
     在仓库根目录执行:
-    ```bash
+```bash
     docker compose -f deploy/open/docker-compose.yml up -d
-    ```
+```
     启动后访问：`http://localhost:18080/`
 
 ### 重要环境变量（节选）
@@ -275,9 +296,18 @@ deploy/
 
 ### 常见操作
 
--   **查看日志**: `docker compose -f deploy/open/docker-compose.yml logs -f ainoval`
--   **重启服务**: `docker compose -f deploy/open/docker-compose.yml restart ainoval`
--   **停止并删除容器**: `docker compose -f deploy/open/docker-compose.yml down`
+-   **查看日志**: 
+    ```bash
+    docker compose -f deploy/open/docker-compose.yml logs -f ainoval
+    ```
+-   **重启服务**: 
+    ```bash
+    docker compose -f deploy/open/docker-compose.yml restart ainoval
+    ```
+-   **停止并删除容器**: 
+    ```bash
+    docker compose -f deploy/open/docker-compose.yml down
+    ```
 
 ## 🎨 使用场景
 
@@ -301,7 +331,7 @@ deploy/
 ## 💬 社区与支持
 
 -   **提交 Issue**: 如果你遇到 Bug 或者有功能建议，欢迎在 [GitHub Issues](https://github.com/north-al/MaliangAINovalWriter/issues) 中提出。
--   **加入讨论**: (社区链接，例如 Discord, Slack, QQ群等 - 待补充)
+-   **加入讨论**: (社区链接，QQ群1062403092)![qrcode_1757509375829](assets/qrcode_1757509375829.jpg)
 
 ## 📄 开源协议
 
