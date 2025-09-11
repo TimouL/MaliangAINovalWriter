@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <base href="/">
+  
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+  
+  <!-- 强制使用HTML渲染器，避免CanvasKit的7MB下载 -->
+  <meta name="flutter-web-renderer" content="html">
+  
+  <!-- 🚀 性能优化：资源预加载 -->
+  <link rel="preload" href="/main.dart.js" as="script">
+  <link rel="preload" href="/main.dart.js_1.part.js" as="script">
+  <link rel="preload" href="/main.dart.js_2.part.js" as="script">
+  <link rel="preload" href="/flutter.js" as="script">
+  <link rel="preload" href="/flutter_bootstrap.js" as="script">
+  
+  <!-- 🌐 CDN 预连接 -->
+  <link rel="preconnect" href="https://maliangwriter.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <!-- 📱 移动端优化 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="ainoval">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>ainoval</title>
+  <link rel="manifest" href="manifest.json">
+  
+  <style>
+    /* 🎨 关键CSS内联，减少渲染阻塞 */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    
+    /* ✨ 加载容器 */
+    .loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    /* 🎯 主要内容容器 */
+    .loading-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      animation: fadeInUp 0.8s ease-out;
+    }
+    
+    /* 🖊️ AI写作图标 */
+    .ai-icon {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 20px;
+      animation: float 3s ease-in-out infinite;
+    }
+    
+    .ai-icon svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 4px 20px rgba(255, 255, 255, 0.3));
+    }
+    
+    /* 📝 应用标题 */
+    .app-title {
+      font-size: 28px;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* 💭 副标题 */
+    .app-subtitle {
+      font-size: 16px;
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: 40px;
+      font-weight: 400;
+    }
+    
+    /* 📊 进度条容器 */
+    .progress-container {
+      width: 300px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 20px;
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+    }
+    
+    /* 📈 进度条 */
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #fff, #f8f9fa);
+      border-radius: 10px;
+      width: 0%;
+      animation: progressFlow 2.5s ease-in-out infinite;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    }
+    
+    /* 💬 加载文本 */
+    .loading-text {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 14px;
+      font-weight: 500;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    /* 🎪 动画关键帧 */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    @keyframes float {
+      0%, 100% {
+        transform: translateY(0px);
+      }
+      50% {
+        transform: translateY(-10px);
+      }
+    }
+    
+    @keyframes progressFlow {
+      0% {
+        width: 0%;
+        opacity: 0.5;
+      }
+      50% {
+        width: 70%;
+        opacity: 1;
+      }
+      100% {
+        width: 100%;
+        opacity: 0.8;
+      }
+    }
+    
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 0.7;
+      }
+      50% {
+        opacity: 1;
+      }
+    }
+    
+    /* 📱 响应式设计 */
+    @media (max-width: 480px) {
+      .ai-icon {
+        width: 60px;
+        height: 60px;
+      }
+      
+      .app-title {
+        font-size: 24px;
+      }
+      
+      .app-subtitle {
+        font-size: 14px;
+      }
+      
+      .progress-container {
+        width: 250px;
+      }
+    }
+    
+    /* 🌟 粒子背景效果 */
+    .particles {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      z-index: -1;
+    }
+    
+    .particle {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      animation: particleFloat 6s linear infinite;
+    }
+    
+    @keyframes particleFloat {
+      0% {
+        transform: translateY(100vh) rotate(0deg);
+        opacity: 0;
+      }
+      10% {
+        opacity: 1;
+      }
+      90% {
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-100px) rotate(360deg);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- ✨ 现代化加载界面 -->
+  <div id="loading" class="loading">
+    <!-- 🌟 粒子背景 -->
+    <div class="particles" id="particles"></div>
+    
+    <!-- 🎯 主要内容 -->
+    <div class="loading-content">
+      <!-- 🤖 AI写作图标 -->
+      <div class="ai-icon">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- 大脑轮廓 -->
+          <path d="M25 35C25 25 35 15 45 15C50 10 60 10 65 15C75 15 85 25 85 35C85 40 80 45 75 45C80 50 85 55 85 65C85 75 75 85 65 85C60 90 50 90 45 85C35 85 25 75 25 65C25 60 30 55 35 55C30 50 25 45 25 35Z" 
+                fill="url(#brainGradient)" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+          
+          <!-- 神经网络线条 -->
+          <g stroke="rgba(255,255,255,0.6)" stroke-width="1.5" fill="none">
+            <path d="M35 30L45 40L55 35L65 45" opacity="0.8">
+              <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2s" repeatCount="indefinite"/>
+            </path>
+            <path d="M40 50L50 45L60 55L70 50" opacity="0.6">
+              <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2.5s" repeatCount="indefinite"/>
+            </path>
+            <path d="M30 60L45 65L55 60L75 65" opacity="0.7">
+              <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3s" repeatCount="indefinite"/>
+            </path>
+          </g>
+          
+          <!-- 笔尖图标 -->
+          <g transform="translate(60, 55)">
+            <path d="M0 0L8 8L4 12L-4 4Z" fill="rgba(255,255,255,0.9)">
+              <animateTransform attributeName="transform" type="rotate" 
+                values="0 2 6;10 2 6;0 2 6" dur="3s" repeatCount="indefinite"/>
+            </path>
+            <path d="M4 12L6 20" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
+          </g>
+          
+          <!-- 发光效果 -->
+          <defs>
+            <linearGradient id="brainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:rgba(255,255,255,0.9)"/>
+              <stop offset="50%" style="stop-color:rgba(255,255,255,0.7)"/>
+              <stop offset="100%" style="stop-color:rgba(255,255,255,0.5)"/>
+            </linearGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+              <feMerge> 
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+        </svg>
+      </div>
+      
+      <!-- 📝 应用信息 -->
+      <h1 class="app-title">AI Novel</h1>
+      <p class="app-subtitle">智能小说创作助手</p>
+      
+      <!-- 📊 进度条 -->
+      <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      
+      <!-- 💬 状态文本 -->
+      <p class="loading-text" id="loadingText">正在初始化应用...</p>
+    </div>
+  </div>
+  
+  <script>
+    // 🚀 性能监控
+    window.performance.mark('app-start');
+    
+    // 🌟 创建粒子背景效果
+    function createParticles() {
+      const particles = document.getElementById('particles');
+      const particleCount = 15;
+      
+      for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        
+        // 随机大小和位置
+        const size = Math.random() * 4 + 2;
+        particle.style.width = size + 'px';
+        particle.style.height = size + 'px';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.animationDelay = Math.random() * 6 + 's';
+        particle.style.animationDuration = (Math.random() * 3 + 4) + 's';
+        
+        particles.appendChild(particle);
+      }
+    }
+    
+    // 📈 模拟进度条进度
+    function simulateProgress() {
+      const progressBar = document.getElementById('progressBar');
+      const loadingText = document.getElementById('loadingText');
+      let progress = 0;
+      
+      const loadingSteps = [
+        '正在加载核心模块...',
+        '正在初始化AI引擎...',
+        '正在连接服务器...',
+        '正在准备写作环境...',
+        '即将完成...'
+      ];
+      
+      const progressInterval = setInterval(() => {
+        progress += Math.random() * 15 + 5;
+        if (progress > 95) progress = 95;
+        
+        progressBar.style.width = progress + '%';
+        
+        // 更新加载文本
+        const stepIndex = Math.floor((progress / 100) * loadingSteps.length);
+        if (stepIndex < loadingSteps.length) {
+          loadingText.textContent = loadingSteps[stepIndex];
+        }
+        
+        if (progress >= 95) {
+          clearInterval(progressInterval);
+        }
+      }, 200);
+      
+      return progressInterval;
+    }
+    
+    // 🎯 页面加载完成后的初始化
+    document.addEventListener('DOMContentLoaded', function() {
+      createParticles();
+      const progressInterval = simulateProgress();
+      
+      // ✨ 隐藏加载指示器
+      window.addEventListener('flutter-first-frame', function() {
+        const progressBar = document.getElementById('progressBar');
+        const loadingText = document.getElementById('loadingText');
+        
+        // 完成进度条
+        progressBar.style.width = '100%';
+        loadingText.textContent = '加载完成！';
+        
+        // 延迟隐藏加载界面，给用户完整的体验
+        setTimeout(() => {
+          const loading = document.getElementById('loading');
+          loading.style.opacity = '0';
+          loading.style.transition = 'opacity 0.5s ease-out';
+          
+          setTimeout(() => {
+            loading.style.display = 'none';
+          }, 500);
+        }, 800);
+        
+        // 性能监控
+        window.performance.mark('app-ready');
+        window.performance.measure('app-boot', 'app-start', 'app-ready');
+        console.log('🚀 App boot time:', window.performance.getEntriesByName('app-boot')[0].duration + 'ms');
+        
+        clearInterval(progressInterval);
+      });
+    });
+    
+    // ⏱️ 超时备用方案
+    setTimeout(function() {
+      const loading = document.getElementById('loading');
+      if (loading && loading.style.display !== 'none') {
+        // 如果超时，也要给一个优雅的退出
+        loading.style.opacity = '0';
+        loading.style.transition = 'opacity 0.5s ease-out';
+        setTimeout(() => {
+          loading.style.display = 'none';
+        }, 500);
+        console.warn('⚠️ Loading timeout - hiding loading screen');
+      }
+    }, 12000);
+  </script>
+  
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

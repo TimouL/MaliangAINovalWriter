@@ -1,0 +1,47 @@
+version: "3.8"
+
+services:
+  mongo:
+    image: mongo:6.0
+    container_name: ainoval-mongo
+    restart: unless-stopped
+    # dev 开发模式：不启用认证（不要设置 MONGO_INITDB_*），首次启动请清空数据卷
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval \"db.adminCommand('ping').ok\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  ainoval:
+    image: ainoval/ainoval-server:latest
+    build:
+      context: ..
+      dockerfile: open/Dockerfile
+    container_name: ainoval-server
+    env_file:
+      - ./production.env
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - JVM_XMS=${JVM_XMS:-512m}
+      - JVM_XMX=${JVM_XMX:-512m}
+      # 覆盖 dev 配置中的 localhost，直接指向 compose 中的 mongo 服务
+      - SPRING_DATA_MONGODB_URI=${SPRING_DATA_MONGODB_URI:-mongodb://mongo:27017/ainovel}
+      - STORAGE_PROVIDER=${STORAGE_PROVIDER:-local}
+      - AINOVEL_STORAGE_TEST_ON_STARTUP=${AINOVEL_STORAGE_TEST_ON_STARTUP:-false}
+      - PROXY_ENABLED=${PROXY_ENABLED:-false}
+    ports:
+      - "18080:18080"
+    volumes:
+      - ./logs:/var/log/ainoval
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+volumes:
+  mongo-data:
+
+
