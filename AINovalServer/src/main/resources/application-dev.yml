@@ -58,31 +58,31 @@ logging:
     # MongoDB Event Listener - 关闭详细的文档内容日志
     org.springframework.data.mongodb.core.mapping.event.LoggingEventListener: WARN
     # 降噪：下列组件在开发中产生大量重复日志，默认仅保留 WARN+
-    com.ainovel.server.security.JwtAuthenticationManager: WARN
-    com.ainovel.server.web.controller.TaskStatusController: WARN
-    com.ainovel.server.web.controller.NovelSnippetController: WARN
-    com.ainovel.server.web.controller.AIChatController: WARN
-    com.ainovel.server.web.controller.UserAIModelConfigController: WARN  # 避免在Controller层打印明文apiKey
-    com.ainovel.server.service.impl.NovelSettingServiceImpl: WARN
-    com.ainovel.server.service.impl.NovelServiceImpl: WARN
-    com.ainovel.server.service.impl.AIServiceImpl: WARN
-    com.ainovel.server.config.LoggingConfiguration: INFO
-    com.ainovel.server.controller.ProviderCapabilityController: WARN
-    com.ainovel.server.controller.UnifiedPresetAggregationController: WARN
-    com.ainovel.server.web.controller.NovelController: WARN
-    com.ainovel.server.web.controller.NovelSettingHistoryController: WARN
-    com.ainovel.server.service.impl.NovelSettingHistoryServiceImpl: WARN
-    com.ainovel.server.service.impl.UnifiedPresetAggregationServiceImpl: WARN
-    com.ainovel.server.service.impl.UserAIModelConfigServiceImpl: WARN
-    com.ainovel.server.service.impl.ApiKeyValidatorImpl: INFO
-    com.ainovel.server.service.ai: WARN
-    com.ainovel.server.service.ai.langchain4j: INFO
-    com.ainovel.server.service.ai.langchain4j.QwenLangChain4jModelProvider: INFO
-    com.ainovel.server.service.ai.langchain4j.LangChain4jModelProvider: WARN
-    com.ainovel.server.service.ai.langchain4j.ZhipuLangChain4jModelProvider: WARN
-    com.ainovel.server.service.ai.langchain4j.DoubaoLangChain4jModelProvider: WARN
-    com.ainovel.server.service.ai.langchain4j.SiliconFlowLangChain4jModelProvider: WARN
-    com.ainovel.server.service.ai.langchain4j.TogetherAILangChain4jModelProvider: WARN
+    # com.ainovel.server.security.JwtAuthenticationManager: WARN
+    # com.ainovel.server.web.controller.TaskStatusController: WARN
+    # com.ainovel.server.web.controller.NovelSnippetController: WARN
+    # com.ainovel.server.web.controller.AIChatController: WARN
+    # com.ainovel.server.web.controller.UserAIModelConfigController: WARN  # 避免在Controller层打印明文apiKey
+    # com.ainovel.server.service.impl.NovelSettingServiceImpl: WARN
+    # com.ainovel.server.service.impl.NovelServiceImpl: WARN
+    # com.ainovel.server.service.impl.AIServiceImpl: WARN
+    # com.ainovel.server.config.LoggingConfiguration: INFO
+    # com.ainovel.server.controller.ProviderCapabilityController: WARN
+    # com.ainovel.server.controller.UnifiedPresetAggregationController: WARN
+    # com.ainovel.server.web.controller.NovelController: WARN
+    # com.ainovel.server.web.controller.NovelSettingHistoryController: WARN
+    # com.ainovel.server.service.impl.NovelSettingHistoryServiceImpl: WARN
+    # com.ainovel.server.service.impl.UnifiedPresetAggregationServiceImpl: WARN
+    # com.ainovel.server.service.impl.UserAIModelConfigServiceImpl: WARN
+    # com.ainovel.server.service.impl.ApiKeyValidatorImpl: INFO
+    # com.ainovel.server.service.ai: WARN
+    # com.ainovel.server.service.ai.langchain4j: INFO
+    # com.ainovel.server.service.ai.langchain4j.QwenLangChain4jModelProvider: INFO
+    # com.ainovel.server.service.ai.langchain4j.LangChain4jModelProvider: WARN
+    # com.ainovel.server.service.ai.langchain4j.ZhipuLangChain4jModelProvider: WARN
+    # com.ainovel.server.service.ai.langchain4j.DoubaoLangChain4jModelProvider: WARN
+    # com.ainovel.server.service.ai.langchain4j.SiliconFlowLangChain4jModelProvider: WARN
+    # com.ainovel.server.service.ai.langchain4j.TogetherAILangChain4jModelProvider: WARN
 
 management:
   endpoints:
@@ -149,6 +149,25 @@ ainovel:
       enabled: true
       query-level: DEBUG
       result-count: true
+  # 🚀 高级并发控制配置
+  concurrency:
+    # 分布式锁配置
+    distributed-lock:
+      enabled: false  # 开发环境默认关闭，生产环境可开启
+      redis:
+        host: localhost
+        port: 6379
+        timeout: 5000  # 锁超时时间(ms)
+    # 异步队列配置  
+    async-queue:
+      enabled: false  # 开发环境默认关闭，高并发时可开启
+      capacity: 1000
+      worker-threads: 5
+    # 乐观锁配置
+    optimistic-lock:
+      enabled: true   # 推荐启用，性能最佳
+      max-retries: 5
+      base-delay: 10  # 基础重试延迟(ms)
 
 # 禁用JWT验证，方便测试
 security:
@@ -167,3 +186,11 @@ jasypt:
     password: ${JASYPT_ENCRYPTOR_PASSWORD:${JASYPT_PASSWORD:AINoval_Secure_Encryption_Key_2025}}
     algorithm: PBEWITHHMACSHA512ANDAES_256
     iv-generator-classname: org.jasypt.iv.RandomIvGenerator
+
+# 番茄小说服务配置
+fanqie:
+  api:
+    base-url: http://localhost:5000     # 后端服务调用（内网直连）
+    public-url: http://localhost:5000   # 前端访问的公开URL（开发环境也是直连）
+    timeout: 30
+

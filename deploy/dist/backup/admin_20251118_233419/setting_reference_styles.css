@@ -1,0 +1,297 @@
+/* 设定引用样式 - 实现多点下划线效果，无默认背景色 */
+
+/* AI生成内容样式 - 蓝色文字标识 */
+.ql-editor .ai-generated,
+.ql-editor span[style*="ai-generated"],
+.ql-editor span[data-ai-generated] {
+  color: #2196F3 !important; /* 蓝色文字 */
+  position: relative;
+  transition: color 0.2s ease;
+  font-style: normal;
+}
+
+/* AI生成内容的底部标识线 */
+.ql-editor .ai-generated::after,
+.ql-editor span[style*="ai-generated"]::after,
+.ql-editor span[data-ai-generated]::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(to right, #2196F3, #64B5F6);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* AI生成内容悬停效果 */
+.ql-editor .ai-generated:hover,
+.ql-editor span[style*="ai-generated"]:hover,
+.ql-editor span[data-ai-generated]:hover {
+  color: #1976D2 !important; /* 深蓝色 */
+  background-color: #E3F2FD !important; /* 浅蓝色背景 */
+  border-radius: 2px;
+}
+
+.ql-editor .ai-generated:hover::after,
+.ql-editor span[style*="ai-generated"]:hover::after,
+.ql-editor span[data-ai-generated]:hover::after {
+  opacity: 1;
+  background: linear-gradient(to right, #1976D2, #42A5F5);
+}
+
+/* 深色模式下的AI生成内容样式 */
+@media (prefers-color-scheme: dark) {
+  .ql-editor .ai-generated,
+  .ql-editor span[style*="ai-generated"],
+  .ql-editor span[data-ai-generated] {
+    color: #64B5F6 !important; /* 亮蓝色 */
+  }
+  
+  .ql-editor .ai-generated::after,
+  .ql-editor span[style*="ai-generated"]::after,
+  .ql-editor span[data-ai-generated]::after {
+    background: linear-gradient(to right, #64B5F6, #90CAF9);
+  }
+  
+  .ql-editor .ai-generated:hover,
+  .ql-editor span[style*="ai-generated"]:hover,
+  .ql-editor span[data-ai-generated]:hover {
+    color: #90CAF9 !important;
+    background-color: #0D47A1 !important; /* 深蓝色背景 */
+  }
+  
+  .ql-editor .ai-generated:hover::after,
+  .ql-editor span[style*="ai-generated"]:hover::after,
+  .ql-editor span[data-ai-generated]:hover::after {
+    background: linear-gradient(to right, #90CAF9, #BBDEFB);
+  }
+}
+
+/* QuillEditor中的设定引用文本 - 使用类名匹配 */
+.ql-editor .setting-reference {
+  position: relative;
+  text-decoration: none !important;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  /* 🎯 移除默认背景色，只在悬停时显示 */
+}
+
+/* 🎯 匹配Flutter Quill渲染的带自定义属性的元素 */
+.ql-editor span[style*="setting-reference"],
+.ql-editor span[style*="setting-style"],
+.ql-editor span[data-setting-reference] {
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  /* 移除默认背景色 */
+  background-color: transparent !important;
+}
+
+/* 多点下划线效果 - 默认显示 - 匹配Flutter的自定义属性 */
+.ql-editor .setting-reference::after,
+.ql-editor span[style*="setting-reference"]::after,
+.ql-editor span[style*="setting-style"]::after,
+.ql-editor span[data-setting-reference]::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 1px;
+  background-image: repeating-linear-gradient(
+    to right,
+    #666,
+    #666 3px,
+    transparent 3px,
+    transparent 7px
+  );
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* 悬停时的效果 - 背景色 + 更明显的下划线 */
+.ql-editor .setting-reference:hover,
+.ql-editor span[style*="setting-reference"]:hover,
+.ql-editor span[style*="setting-style"]:hover,
+.ql-editor span[data-setting-reference]:hover {
+  background-color: #FFF3CD !important;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.ql-editor .setting-reference:hover::after,
+.ql-editor span[style*="setting-reference"]:hover::after,
+.ql-editor span[style*="setting-style"]:hover::after,
+.ql-editor span[data-setting-reference]:hover::after {
+  opacity: 1;
+  background-image: repeating-linear-gradient(
+    to right,
+    #333,
+    #333 3px,
+    transparent 3px,
+    transparent 7px
+  );
+}
+
+/* 🎯 兼容性：也匹配带下划线的设定引用文本 */
+.ql-editor u[data-setting-reference],
+.ql-editor span[style*="text-decoration: underline"][data-setting-reference],
+.ql-editor span[style*="text-decoration-line: underline"][data-setting-reference] {
+  position: relative;
+  text-decoration: none !important;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  /* 🎯 移除默认背景色 */
+}
+
+.ql-editor u[data-setting-reference]::after,
+.ql-editor span[style*="text-decoration: underline"][data-setting-reference]::after,
+.ql-editor span[style*="text-decoration-line: underline"][data-setting-reference]::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 1px;
+  background-image: repeating-linear-gradient(
+    to right,
+    #666,
+    #666 3px,
+    transparent 3px,
+    transparent 7px
+  );
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.ql-editor u[data-setting-reference]:hover,
+.ql-editor span[style*="text-decoration: underline"][data-setting-reference]:hover,
+.ql-editor span[style*="text-decoration-line: underline"][data-setting-reference]:hover {
+  background-color: #FFF3CD !important;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.ql-editor u[data-setting-reference]:hover::after,
+.ql-editor span[style*="text-decoration: underline"][data-setting-reference]:hover::after,
+.ql-editor span[style*="text-decoration-line: underline"][data-setting-reference]:hover::after {
+  opacity: 1;
+  background-image: repeating-linear-gradient(
+    to right,
+    #333,
+    #333 3px,
+    transparent 3px,
+    transparent 7px
+  );
+}
+
+/* 🚨 强制移除原有的始终显示背景色的样式 */
+.ql-editor span[style*="background-color: rgb(255, 243, 205)"],
+.ql-editor span[style*="background-color: #FFF3CD"],
+.ql-editor span[style*="background-color: #fff3cd"],
+.ql-editor span[style*="background"],
+.ql-editor span[style*="background-color"] {
+  background-color: transparent !important;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+/* 这些元素的多点下划线效果 */
+.ql-editor span[style*="background-color: rgb(255, 243, 205)"]::after,
+.ql-editor span[style*="background-color: #FFF3CD"]::after,
+.ql-editor span[style*="background-color: #fff3cd"]::after,
+.ql-editor span[style*="background"]::after,
+.ql-editor span[style*="background-color"]::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 1px;
+  background-image: repeating-linear-gradient(
+    to right,
+    #666,
+    #666 3px,
+    transparent 3px,
+    transparent 7px
+  );
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* 悬停时恢复背景色 */
+.ql-editor span[style*="background-color: rgb(255, 243, 205)"]:hover,
+.ql-editor span[style*="background-color: #FFF3CD"]:hover,
+.ql-editor span[style*="background-color: #fff3cd"]:hover,
+.ql-editor span[style*="background"]:hover,
+.ql-editor span[style*="background-color"]:hover {
+  background-color: #FFF3CD !important;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+/* 悬停时的下划线效果 */
+.ql-editor span[style*="background-color: rgb(255, 243, 205)"]:hover::after,
+.ql-editor span[style*="background-color: #FFF3CD"]:hover::after,
+.ql-editor span[style*="background-color: #fff3cd"]:hover::after,
+.ql-editor span[style*="background"]:hover::after,
+.ql-editor span[style*="background-color"]:hover::after {
+  opacity: 1;
+  background-image: repeating-linear-gradient(
+    to right,
+    #333,
+    #333 3px,
+    transparent 3px,
+    transparent 7px
+  );
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+  .ql-editor .setting-reference::after,
+  .ql-editor u[data-setting-reference]::after,
+  .ql-editor span[style*="text-decoration: underline"][data-setting-reference]::after,
+  .ql-editor span[style*="text-decoration-line: underline"][data-setting-reference]::after {
+    background-image: repeating-linear-gradient(
+      to right,
+      #999,
+      #999 3px,
+      transparent 3px,
+      transparent 7px
+    );
+  }
+  
+  .ql-editor .setting-reference:hover,
+  .ql-editor u[data-setting-reference]:hover,
+  .ql-editor span[style*="text-decoration: underline"][data-setting-reference]:hover,
+  .ql-editor span[style*="text-decoration-line: underline"][data-setting-reference]:hover {
+    background-color: #4A4A00 !important;
+  }
+  
+  .ql-editor .setting-reference:hover::after,
+  .ql-editor u[data-setting-reference]:hover::after,
+  .ql-editor span[style*="text-decoration: underline"][data-setting-reference]:hover::after,
+  .ql-editor span[style*="text-decoration-line: underline"][data-setting-reference]:hover::after {
+    background-image: repeating-linear-gradient(
+      to right,
+      #CCC,
+      #CCC 3px,
+      transparent 3px,
+      transparent 7px
+    );
+  }
+}
+
+/* 🎯 确保设定引用元素的鼠标样式 */
+.ql-editor .setting-reference,
+.ql-editor [data-setting-reference] {
+  cursor: pointer !important;
+}
+
+.ql-editor .setting-reference:hover,
+.ql-editor [data-setting-reference]:hover {
+  cursor: pointer !important;
+} 

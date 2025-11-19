@@ -31,7 +31,14 @@ public class WebConfig implements WebFluxConfigurer {
     
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // 静态资源配置：映射前端静态文件到 /app/web/ 目录
+        // 管理员面板静态资源：/admin/** 路径映射到 /app/admin_web/ 目录
+        // 注意：/admin 和 /admin/ 由 AdminPanelController 处理
+        registry.addResourceHandler("/admin/**")
+                .addResourceLocations("file:/app/admin_web/")
+                .setCacheControl(CacheControl.noCache())
+                .resourceChain(true);
+        
+        // 主应用静态资源：映射前端静态文件到 /app/web/ 目录
         // 注意：不要拦截 /api/** 路径，避免影响API请求
         registry.addResourceHandler(
                 "/",
@@ -42,7 +49,8 @@ public class WebConfig implements WebFluxConfigurer {
                 "/*.js",
                 "/*.json",
                 "/*.css",
-                "/favicon.ico"
+                "/favicon.ico",
+                "/fonts/**"
         )
                 .addResourceLocations("file:/app/web/")
                 .setCacheControl(CacheControl.noCache())

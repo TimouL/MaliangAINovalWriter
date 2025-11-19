@@ -1,0 +1,31 @@
+﻿[
+  {
+    "family": "MaterialIcons",
+    "fonts": [
+      {
+        "asset": "fonts/MaterialIcons-Regular.otf"
+      }
+    ]
+  },
+  {
+    "family": "Roboto",
+    "fonts": [
+      {
+        "asset": "fonts/Roboto-Regular.ttf"
+      }
+    ]
+  },
+  {
+    "family": "NotoSansSC",
+    "fonts": [
+      {
+        "asset": "fonts/NotoSansSC-Regular.ttf",
+        "weight": 400
+      },
+      {
+        "asset": "fonts/NotoSansSC-Bold.ttf",
+        "weight": 700
+      }
+    ]
+  }
+]

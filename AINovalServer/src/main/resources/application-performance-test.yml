@@ -1,52 +1,139 @@
 server:
-  port: 18088
+  port: 18080
   shutdown: graceful
   netty:
     connection-timeout: 5s
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: on-param
+    include-exception: true
+
+proxy:
+  enabled: true
+  host: 127.0.0.1        # 容器内改为 host.docker.internal 或代理容器名
+  port: 6888             # 若是 socks 监听端口不同，请改为实际端口
+  type: socks            # 关键：切换为 socks
+  applySystemProperties: true
+  applyProxySelector: false
+  trustAllCerts: true   # 排障时可临时 true，生产请 false
 
 spring:
   application:
     name: ai-novel-server
   data:
     mongodb:
-      uri: localhost:27017/ainoval
+      uri: mongodb://localhost:27017/ainoval_performance_test?
       auto-index-creation: true
       database: ainovel
       authentication-database: admin
   webflux:
-    base-path: /api
+    base-path: /
   lifecycle:
     timeout-per-shutdown-phase: 30s
 
 logging:
   level:
     root: INFO
-    com.ainovel: DEBUG
-    org.springframework.data.mongodb: INFO
-    org.springframework.web: INFO
-    org.springframework.security: DEBUG
-    reactor.netty: INFO
+    com.ainovel: INFO
+    com.ainovel.server: INFO
+    # 添加MongoDB查询日志配置
+    org.springframework.data.mongodb: WARN
+    com.ainovel.server.service.impl.ImportServiceImpl: DEBUG
+    com.ainovel.server.config.MongoQueryCounterAspect: WARN
+    org.springframework.data.mongodb.core.ReactiveMongoTemplate: WARN
+    org.springframework.data.mongodb.core.MongoTemplate: WARN
+    org.springframework.data.mongodb.repository.query: WARN
+    org.springframework.web: WARN
+    org.springframework.security: WARN
+    org.eclipse.angus.mail.smtp: DEBUG
+    reactor.netty: WARN
+    # MongoDB 映射调试日志 - 用于排查 MappingException
+    org.springframework.data.mongodb.core.convert: WARN
+    org.springframework.data.mongodb.core.mapping: WARN
+    org.springframework.data.mapping: WARN
+    org.springframework.data.mapping.model: WARN
+    # MongoDB Java Driver 调试（可选）
+    org.mongodb.driver: WARN
+    # MongoDB Event Listener - 关闭详细的文档内容日志
+    org.springframework.data.mongodb.core.mapping.event.LoggingEventListener: WARN
+    # 降噪：下列组件在开发中产生大量重复日志，默认仅保留 WARN+
+    # com.ainovel.server.security.JwtAuthenticationManager: WARN
+    # com.ainovel.server.web.controller.TaskStatusController: WARN
+    # com.ainovel.server.web.controller.NovelSnippetController: WARN
+    # com.ainovel.server.web.controller.AIChatController: WARN
+    # com.ainovel.server.web.controller.UserAIModelConfigController: WARN  # 避免在Controller层打印明文apiKey
+    # com.ainovel.server.service.impl.NovelSettingServiceImpl: WARN
+    # com.ainovel.server.service.impl.NovelServiceImpl: WARN
+    # com.ainovel.server.service.impl.AIServiceImpl: WARN
+    # com.ainovel.server.config.LoggingConfiguration: INFO
+    # com.ainovel.server.controller.ProviderCapabilityController: WARN
+    # com.ainovel.server.controller.UnifiedPresetAggregationController: WARN
+    # com.ainovel.server.web.controller.NovelController: WARN
+    # com.ainovel.server.web.controller.NovelSettingHistoryController: WARN
+    # com.ainovel.server.service.impl.NovelSettingHistoryServiceImpl: WARN
+    # com.ainovel.server.service.impl.UnifiedPresetAggregationServiceImpl: WARN
+    # com.ainovel.server.service.impl.UserAIModelConfigServiceImpl: WARN
+    # com.ainovel.server.service.impl.ApiKeyValidatorImpl: INFO
+    # com.ainovel.server.service.ai: WARN
+    # com.ainovel.server.service.ai.langchain4j: INFO
+    # com.ainovel.server.service.ai.langchain4j.QwenLangChain4jModelProvider: INFO
+    # com.ainovel.server.service.ai.langchain4j.LangChain4jModelProvider: WARN
+    # com.ainovel.server.service.ai.langchain4j.ZhipuLangChain4jModelProvider: WARN
+    # com.ainovel.server.service.ai.langchain4j.DoubaoLangChain4jModelProvider: WARN
+    # com.ainovel.server.service.ai.langchain4j.SiliconFlowLangChain4jModelProvider: WARN
+    # com.ainovel.server.service.ai.langchain4j.TogetherAILangChain4jModelProvider: WARN
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health,info,metrics,prometheus,jmx
+    jmx:
+      exposure:
+        include: "*"
   endpoint:
     health:
       show-details: always
-  metrics:
-    export:
-      prometheus:
+    jmx:
+      enabled: true
+  jmx:
+    enabled: true
+  # 更新过时的配置
+  prometheus:
+    metrics:
+      export:
         enabled: true
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+    exporter:
+      otlp:
+        enabled: true
+        endpoint: http://${OTLP_TRACES_HOST:localhost}:${OTLP_TRACES_PORT:11800}
+  metrics:
     tags:
       application: ${spring.application.name}
+      environment: dev
+    distribution:
+      percentiles-histogram:
+        "[tasks.execution.time]": true
+        "[http.server.requests]": true
+      percentiles:
+        "[tasks.execution.time]": [0.5, 0.95, 0.99]
+        "[http.server.requests]": [0.5, 0.95, 0.99]
+      slo:
+        "[tasks.execution.time]": [2000ms, 10000ms, 30000ms]
+
+        "[http.server.requests]": [100ms, 300ms, 1s, 3s, 5s]
 
 # 自定义配置
 ainovel:
   security:
     jwt:
-      secret-key: test_secret_key_for_performance_testing
+      # 为了兼容旧代码读取此键的场景，这里也统一引用同一个环境变量
+      secret-key: ${JWT_SECRET:aiNovelSecretKey12345678901234567890}
       expiration-time: 86400000  # 24小时，单位毫秒
       refresh-token-expiration: 604800000  # 7天，单位毫秒
   performance:
@@ -55,4 +142,67 @@ ainovel:
     monitoring:
       enabled: true
     testing:
-      security-disabled: true  # 禁用安全验证，方便测试 
+      security-disabled: true  # 禁用安全验证，方便测试
+  # 添加MongoDB查询日志配置
+  mongodb:
+    logging:
+      enabled: true
+      query-level: DEBUG
+      result-count: true
+  # 🚀 高级并发控制配置
+  concurrency:
+    # 分布式锁配置
+    distributed-lock:
+      enabled: false  # 开发环境默认关闭，生产环境可开启
+      redis:
+        host: localhost
+        port: 6379
+        timeout: 5000  # 锁超时时间(ms)
+    # 异步队列配置  
+    async-queue:
+      enabled: false  # 开发环境默认关闭，高并发时可开启
+      capacity: 1000
+      worker-threads: 5
+    # 乐观锁配置
+    optimistic-lock:
+      enabled: true   # 推荐启用，性能最佳
+      max-retries: 5
+      base-delay: 10  # 基础重试延迟(ms)
+
+# 禁用JWT验证，方便测试
+security:
+  jwt:
+    disabled: false
+
+# 统一 JwtServiceImpl 的读取来源（dev 环境）
+jwt:
+  secret: ${JWT_SECRET:aiNovelSecretKey12345678901234567890}
+  expiration: 86400000
+  refresh-expiration: 604800000
+
+# 显式固定开发环境的 Jasypt 加解密配置，避免被外部环境变量干扰
+jasypt:
+  encryptor:
+    password: ${JASYPT_ENCRYPTOR_PASSWORD:${JASYPT_PASSWORD:AINoval_Secure_Encryption_Key_2025}}
+    algorithm: PBEWITHHMACSHA512ANDAES_256
+    iv-generator-classname: org.jasypt.iv.RandomIvGenerator
+
+# 番茄小说服务配置
+fanqie:
+  api:
+    base-url: http://localhost:5000     # 后端服务调用（内网直连）
+    public-url: http://localhost:5000   # 前端访问的公开URL（开发环境也是直连）
+    timeout: 30
+
+# 支付配置（沙箱环境）
+payment:
+  alipay:
+    app-id: 9021000141614237  # 沙箱环境AppId
+    sandbox: true  # 启用沙箱模式
+    # 商户私钥（从提供的文件中读取）
+    merchant-private-key-pem: MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDVCR3F0Iodx/YNev9nuYHkv5qf81j6+9zz+dC3wK1BbRnCoxer1tjFvQ1msl26erI2+VPGQxY5+Z+X+3gZ7K2K1brIElYb93Gesb0r2DIFKmUBnYb4o8VoKXK6STUMnJftOugvN1gYpFIlI4BlkuUzmO6jHyPatYLDlkpvp8Aw1WPdr9e/kOZLk3auGpWGPmyAO64Sdhvb7HqhNKe9s7rgc/yBLcfvDmWs2AFHtjSMgYTSnHyV5nArVADimsyS2GMqaXTRk/8KUpSX0rHYIPFl1Z2fAjC2ZgiRVzj5pnbNn1ZZz8JfTxtTT4nCRihO28K60BlFBYZCHGRzfZDIWgLLAgMBAAECggEAYj8iC+hwyes9/lmLEDrtPKFgngOMNbOR4rKDHzssq8+04Z51fDpJHmhhlcsMjsOnDNNPX0/xICuO/nhqmwobvrtyuHI8ZAlpzNYLd/zslJVIn8YWSPS+RZtX3bGFVZuiNTXFfoD3j+W4PIhy3mUwbutIotHppyOueqUFDxk9+UaXyf0PVfFLI9gRxgW9PBHE70qvMv9+HcZJVtEIKXXpEhsNTr6n+1a4v+AGTawNMijyHjdF72O8PzQ9e3Ibda5DqXLzDYPhTCpn6N8eu9Cyc5xoJtNWNxiYFdIYUhBltPfVi3G28l0LEB5+pFlxPmYWzuV7CR21+y/SP7PsemnzgQKBgQD/6lotM1iJktNaqCqf4HxOpk6BU+JaAd+O8vxdWUGaSKJ2lhRIx6VNwrG8m2nHgxZvKDnV4waDrbp72/81VaNFHn+n3yEq3DGrFOrBbgOMpBA8r1LNSYpbWi7LM0WdrfXxkYAxTm6DibvpK9+QM/4L6uAwvsGBIgbbgHtH13ooBQKBgQDVGyMJqInv2r03R3dRYVQQj6n4C9Xh26OyG8TVwUtYxDwMRcwxR6z0fNhKhRzmwAyXByNT1rS6urc6Fcom02scfY9NSCzGOJmgkrPVn8k/280A9a+vOpb5ZFX60UgeDwNtKDLQ3Kryvw+BH1gud6LajDU2DfvuJZdi3yumvF+IjwKBgQDsvgyL8gr+wcAaBqXf3tjAHWNUiphD8aWxZSGG7bIdmwIIOBAtv9sxE2I++3qgoakYTZsrPWjiWc3BFSSDX2S55VvsnSLetnKQNLpzFGXeLkwDB6HO3TBMECJnwletZae2wIZZlpfvwXP/YaHgkeh7d93L2jvCTQsQ9kuVi0WrTQKBgBG6bDPFfZQiklMi8t4mRqQKD42/Dk/3wapzfPB7YBVGXeh3dgEzgUPljujEIh9gIqv9wAadefN+zPdcELEiLWr1VxKKyo7C7qTZD3TaEhfp5SgLSE4/hYfBvRVci69UeGiAS5nsgZwoINYREXjsIvQjbdnNWAP7xJhJEIySZzApAoGBAObzfl6eTBzdmQO+L7NR43TD0Hlgy86nS29h0D56IPGcyOfJjXvJPvromGFr+cmkPAbjSSUXKJUOyJ8krxW8oKbvglPUIGxfV2eYIYG0F3WhCFQbeeDnbZ86vZMFWSSWU5zIgcJi1FJCqmY2SivvgxBj4X56ssuqAhGGaXUvZgRk
+    # 支付宝公钥（从提供的文件中读取）
+    alipay-public-key-pem: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2sXLcJALLS93TitnoAQIvExn9j3X72VM4rvLXcO1F7ol7P2lkxwzqgY40WJ0sGiYrKNKp7MG0hoqm4zf//33YFS/tTqXeEOfrIXRe6VUKEr7HWNxTob4+fFr8qvatQu25wQUozuGuAZG9CKkmX6PtIA+6+EIohA0GP3RHP7JgcFATg32egoS00MqwNU776uGwlGXyQ+gI3bHDTL3PwII57PCfsxcxl7O4rVy/qJsu/z7ApbBNhefoNgRfRjrCqbi7ByoKn0+xMtt8Cqk07sm6fV0z0Vj6gOU7EesgKorzs0BIwIkO80Sby6uRCXLnDWnrAk/0zkjUbNzfmA1tWKSBwIDAQAB
+    # 异步通知回调地址（需要公网可访问）
+    # 开发环境暂时留空，只依赖前端轮询查询支付状态
+    notify-url: ""

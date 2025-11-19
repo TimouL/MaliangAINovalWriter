@@ -15,10 +15,12 @@ WORKDIR /app
 # Copy prebuilt server jar and web assets (paths are relative to build context: deploy)
 COPY dist/ainoval-server.jar /app/ainoval-server.jar
 COPY dist/web/ /app/web/
+COPY dist/admin_web/ /app/admin_web/
 
 EXPOSE 18080
 
 # Serve the prebuilt web from filesystem via Spring static locations
-CMD sh -c "java -Xms${JVM_XMS} -Xmx${JVM_XMX} -Dfile.encoding=UTF-8 -Dspring.web.resources.static-locations=file:/app/web/ -jar /app/ainoval-server.jar"
+# Support multiple static resource locations: main web app and admin panel
+CMD sh -c "java -Xms${JVM_XMS} -Xmx${JVM_XMX} -Dfile.encoding=UTF-8 -Dspring.web.resources.static-locations=file:/app/web/,file:/app/admin_web/ -jar /app/ainoval-server.jar"
 
 

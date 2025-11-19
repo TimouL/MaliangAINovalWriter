@@ -77,6 +77,9 @@ public class SecurityConfig {
                 // 静态资源和根路径
                 .pathMatchers("/", "/index.html", "/favicon.ico", "/manifest.json").permitAll()
                 .pathMatchers("/assets/**", "/icons/**", "/canvaskit/**", "/*.js", "/*.css").permitAll()
+                // 管理员面板静态资源
+                .pathMatchers("/admin", "/admin/", "/admin/index.html", "/admin/favicon.ico", "/admin/manifest.json").permitAll()
+                .pathMatchers("/admin/assets/**", "/admin/icons/**", "/admin/canvaskit/**", "/admin/*.js", "/admin/*.css", "/admin/fonts/**").permitAll()
                 // 放开 Actuator 指标端点给 Prometheus 抓取
                 .pathMatchers(HttpMethod.GET, "/actuator/prometheus").permitAll()
                 .pathMatchers(HttpMethod.GET, "/actuator/health").permitAll()

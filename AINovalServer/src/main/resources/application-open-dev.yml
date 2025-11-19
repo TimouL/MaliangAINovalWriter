@@ -151,7 +151,25 @@ ainovel:
       enabled: true
       query-level: DEBUG
       result-count: true
-
+  # 🚀 高级并发控制配置
+  concurrency:
+    # 分布式锁配置
+    distributed-lock:
+      enabled: false  # 开发环境默认关闭，生产环境可开启
+      redis:
+        host: localhost
+        port: 6379
+        timeout: 5000  # 锁超时时间(ms)
+    # 异步队列配置  
+    async-queue:
+      enabled: false  # 开发环境默认关闭，高并发时可开启
+      capacity: 1000
+      worker-threads: 5
+    # 乐观锁配置
+    optimistic-lock:
+      enabled: true   # 推荐启用，性能最佳
+      max-retries: 5
+      base-delay: 10  # 基础重试延迟(ms)
 # 禁用JWT验证，方便测试
 security:
   jwt:
@@ -169,3 +187,10 @@ jasypt:
     password: ${JASYPT_ENCRYPTOR_PASSWORD:${JASYPT_PASSWORD:AINoval_Secure_Encryption_Key_2025}}
     algorithm: PBEWITHHMACSHA512ANDAES_256
     iv-generator-classname: org.jasypt.iv.RandomIvGenerator
+
+# 番茄小说服务配置
+fanqie:
+  api:
+    base-url: http://localhost:5000     # 后端服务调用（内网直连）
+    public-url: http://localhost:5000   # 前端访问的公开URL（开发环境也是直连）
+    timeout: 30

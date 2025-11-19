@@ -98,9 +98,13 @@ logging:
     com.ainovel.server: DEBUG
     com.ainovel.server.task: INFO
     org.springframework.amqp: INFO
-  request: true
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight(%-5level) [%X{traceId:-}] [%X{userId:-}] [%thread] %logger{36} - %msg%n"
+    org.apache.skywalking: INFO
+  # 日志配置已迁移到 logback-spring.xml
+  # 使用规范的logback配置，集成SkyWalking链路追踪
+  config: classpath:logback-spring.xml
+  # 日志文件存储路径（可通过环境变量覆盖）
+  file:
+    path: ${LOG_HOME:./logs}
 
 management:
   endpoints:
@@ -145,7 +149,7 @@ ainovel:
     jwt:
       # 统一引用 JWT_SECRET 环境变量，保持与 dev/prod 一致
       secret-key: ${JWT_SECRET:changeme_in_production_environment}
-      expiration-time: 86400000  # 24小时，单位毫秒
+      expiration-time: 600000  # 10分钟，单位毫秒
       refresh-token-expiration: 604800000  # 7天，单位毫秒
   performance:
     virtual-threads:
@@ -218,7 +222,7 @@ proxy:
 jwt:
   # 统一使用环境变量 JWT_SECRET，提供开发默认值
   secret: ${JWT_SECRET:aiNovelSecretKey12345678901234567890}
-  expiration: 86400000
+  expiration: 600000
   refresh-expiration: 604800000
 payment:
   wechat:
@@ -254,7 +258,7 @@ jasypt:
 task:
   transport: local
   local:
-    concurrency: 4
+    concurrency: 2000  # 优化：16核64GB支持20个并发消费者
   # 限流配置
   ratelimiter:
     # 限流器类型: memory (基于内存) 或 redis (分布式)
@@ -279,17 +283,17 @@ task:
       dimension: USER_PROVIDER_MODEL
     # 各AI提供商或模型的特定限流配置
     providers:
-      # Gemini特殊配置 - 应对200次/天限制
+      # Gemini特殊配置 - 优化为2万次/天限制
       gemini:
-        strategy: CONSERVATIVE  # 保守策略
-        dimension: GLOBAL       # 全局维度限流（免费层共享配额）
-        rate: 2              # 每秒0.2个请求 (约180次/天)
-        burstCapacity: 2       # 突发容量1
-        dailyLimit: 2000000       # 日限额200次
-        safetyBuffer: 20       # 安全缓冲20次
-        retryStrategy: EXPONENTIAL_BACKOFF  # 4倍指数退避
-        maxRetryAttempts: 3    # 最大重试3次（降低以避免长时间等待）
-        defaultTimeoutMillis: 20000  # 20秒超时（降低以更快失败并重试）
+        strategy: STANDARD      # 标准策略（从保守改为标准）
+        dimension: GLOBAL       # 全局维度限流（共享配额）
+        rate: 2.0               # 每秒2个请求 (17280次/天)
+        burstCapacity: 10       # 突发容量10（应对短时间高并发）
+        dailyLimit: 20000       # 日限额2万次
+        safetyBuffer: 500       # 安全缓冲500次（2.5%）
+        retryStrategy: EXPONENTIAL_BACKOFF  # 指数退避
+        maxRetryAttempts: 3     # 最大重试3次
+        defaultTimeoutMillis: 15000  # 15秒超时
         
       # OpenAI标准配置  
       openai:
