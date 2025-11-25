@@ -53,11 +53,11 @@ jobs:
 
       - name: Build Flutter web (app)
         working-directory: AINoval
-        run: flutter build web --release --web-renderer canvaskit --output build/web
+        run: flutter build web --release --renderer canvaskit --output build/web
 
       - name: Build Flutter web (admin)
         working-directory: AINoval
-        run: flutter build web --release --web-renderer canvaskit -t lib/admin_main.dart --output build/admin_web
+        run: flutter build web --release --renderer canvaskit -t lib/admin_main.dart --output build/admin_web
 
       - name: Prepare dist assets
         run: |
