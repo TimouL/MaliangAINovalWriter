@@ -109,7 +109,10 @@ jobs:
             for icon in Icon-192.png Icon-512.png; do
               for candidate in "$dir/$icon" "AINoval/build/web/$icon" "AINoval/build/admin_web/$icon" "AINoval/web/$icon"; do
                 if [ -f "$candidate" ]; then
-                  cp "$candidate" "$dir/$icon"
+                  # 仅在源与目标不同且未指向同一文件时复制
+                  if [ "$candidate" != "$dir/$icon" ] && [ ! "$candidate" -ef "$dir/$icon" ]; then
+                    cp "$candidate" "$dir/$icon"
+                  fi
                   break
                 fi
               done
