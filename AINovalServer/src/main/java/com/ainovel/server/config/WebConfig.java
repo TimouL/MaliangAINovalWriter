@@ -46,6 +46,7 @@ public class WebConfig implements WebFluxConfigurer {
                 "/manifest.json",
                 "/AssetManifest.json",
                 "/AssetManifest.bin",
+                "/AssetManifest.bin.json",
                 "/FontManifest.json",
                 "/flutter.js",
                 "/flutter_bootstrap.js",

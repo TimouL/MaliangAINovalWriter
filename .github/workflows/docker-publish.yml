@@ -70,6 +70,13 @@ jobs:
             else
               echo "Skip: no nested assets in $dir"
             fi
+
+            # 将清单文件提升到构建根，匹配运行时请求路径
+            for manifest in AssetManifest.json AssetManifest.bin AssetManifest.bin.json FontManifest.json NOTICES; do
+              if [ -f "$dir/assets/$manifest" ]; then
+                cp "$dir/assets/$manifest" "$dir/$manifest"
+              fi
+            done
           done
 
       - name: Fix package asset paths
