@@ -62,9 +62,13 @@ jobs:
       - name: Fix fluttertoast asset path
         run: |
           for dir in AINoval/build/web AINoval/build/admin_web; do
-            if [ -d "$dir/assets/packages" ]; then
+            src="$dir/assets/packages/fluttertoast/assets/toastify.css"
+            if [ -f "$src" ]; then
               mkdir -p "$dir/packages"
               cp -a "$dir/assets/packages/." "$dir/packages/"
+              echo "Copied fluttertoast assets into $dir/packages"
+            else
+              echo "Skip: toastify.css not found under $dir/assets/packages/fluttertoast"
             fi
           done
 
