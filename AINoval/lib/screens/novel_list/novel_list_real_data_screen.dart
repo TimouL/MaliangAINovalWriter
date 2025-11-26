@@ -394,7 +394,7 @@ class _NovelListRealDataScreenState extends State<NovelListRealDataScreen> {
                                       )
                                     : NoticeTicker(
                                         initialMessages: const [
-            '当前小说网站属于测试状态，欢迎大家加入qq群1062403092',
+            '当前小说网站属于测试状态，欢迎大家加入qq群',
             '如果有报错和bug或者改进建议，欢迎大家在群里反馈'
                                         ],
                                       ))),

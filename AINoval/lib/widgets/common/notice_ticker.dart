@@ -37,7 +37,7 @@ class _NoticeTickerState extends State<NoticeTicker> {
     super.initState();
     _messages = (widget.initialMessages == null || widget.initialMessages!.isEmpty)
         ? <String>[
-            '当前小说网站属于测试状态，欢迎大家加入qq群1062403092',
+            '当前小说网站属于测试状态，欢迎大家加入qq群',
             '如果有报错和bug或者改进建议，欢迎大家在群里反馈'
           ]
         : List<String>.from(widget.initialMessages!);
