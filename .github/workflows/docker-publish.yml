@@ -71,6 +71,17 @@ jobs:
               echo "Skip: no nested assets in $dir"
             fi
 
+            # 确保 PWA 图标既在 icons/ 也在根目录可直连
+            for icon in Icon-192.png Icon-512.png Icon-maskable-192.png Icon-maskable-512.png; do
+              for candidate in "$dir/icons/$icon" "$dir/$icon" "AINoval/web/icons/$icon"; do
+                if [ -f "$candidate" ]; then
+                  cp "$candidate" "$dir/icons/$icon"
+                  cp "$candidate" "$dir/$icon"
+                  break
+                fi
+              done
+            done
+
             # 将清单文件提升到构建根，匹配运行时请求路径
             for manifest in AssetManifest.json AssetManifest.bin AssetManifest.bin.json FontManifest.json NOTICES; do
               if [ -f "$dir/assets/$manifest" ]; then
@@ -119,6 +130,14 @@ jobs:
           mkdir -p deploy/dist/web deploy/dist/admin_web
           cp -a AINoval/build/web/. deploy/dist/web/
           cp -a AINoval/build/admin_web/. deploy/dist/admin_web/
+
+          # 基础文件校验，构建缺失则提前失败
+          for dir in deploy/dist/web deploy/dist/admin_web; do
+            for req in main.dart.js Icon-192.png Icon-512.png; do
+              [ -f "$dir/$req" ] || { echo "Missing $req in $dir"; exit 1; }
+            done
+            ls "$dir"/main.dart.js_*.part.js >/dev/null 2>&1 || { echo "Missing main.dart.js_*.part.js in $dir"; exit 1; }
+          done
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
