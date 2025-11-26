@@ -144,7 +144,11 @@ jobs:
             for req in main.dart.js Icon-192.png Icon-512.png; do
               [ -f "$dir/$req" ] || { echo "Missing $req in $dir"; exit 1; }
             done
-            ls "$dir"/main.dart.js_*.part.js >/dev/null 2>&1 || { echo "Missing main.dart.js_*.part.js in $dir"; exit 1; }
+            if ls "$dir"/main.dart.js_*.part.js >/dev/null 2>&1; then
+              echo "Found dart part files in $dir"
+            else
+              echo "No main.dart.js_* part files in $dir (single bundle)"
+            fi
           done
 
       - name: Set up Docker Buildx
