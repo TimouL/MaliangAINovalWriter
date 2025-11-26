@@ -45,6 +45,12 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Clean Flutter build artifacts
+        working-directory: AINoval
+        run: |
+          flutter clean
+          rm -rf build
+
       - name: Enable web and fetch deps
         working-directory: AINoval
         run: |
