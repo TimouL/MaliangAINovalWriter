@@ -43,16 +43,34 @@ public class WebConfig implements WebFluxConfigurer {
         registry.addResourceHandler(
                 "/",
                 "/index.html",
-                "/assets/**",
-                "/icons/**",
-                "/canvaskit/**",
+                "/manifest.json",
+                "/AssetManifest.json",
+                "/AssetManifest.bin",
+                "/FontManifest.json",
+                "/flutter.js",
+                "/flutter_bootstrap.js",
                 "/*.js",
                 "/*.json",
                 "/*.css",
                 "/favicon.ico",
-                "/fonts/**"
+                "/favicon.png",
+                "/assets/**",
+                "/icons/**",
+                "/canvaskit/**",
+                "/shaders/**"
         )
                 .addResourceLocations("file:/app/web/")
+                .setCacheControl(CacheControl.noCache())
+                .resourceChain(true);
+
+        // 兼容部分插件/字体直接请求 /fonts/** 或 /packages/** 的情况
+        registry.addResourceHandler("/fonts/**")
+                .addResourceLocations("file:/app/web/fonts/", "file:/app/web/assets/fonts/")
+                .setCacheControl(CacheControl.noCache())
+                .resourceChain(true);
+
+        registry.addResourceHandler("/packages/**")
+                .addResourceLocations("file:/app/web/packages/", "file:/app/web/assets/packages/")
                 .setCacheControl(CacheControl.noCache())
                 .resourceChain(true);
     }
