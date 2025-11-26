@@ -59,16 +59,29 @@ jobs:
         working-directory: AINoval
         run: flutter build web --release -t lib/admin_main.dart --output build/admin_web
 
-      - name: Fix fluttertoast asset path
+      - name: Flatten Flutter web assets
         run: |
           for dir in AINoval/build/web AINoval/build/admin_web; do
-            src="$dir/assets/packages/fluttertoast/assets/toastify.css"
-            if [ -f "$src" ]; then
-              mkdir -p "$dir/packages"
-              cp -a "$dir/assets/packages/." "$dir/packages/"
-              echo "Copied fluttertoast assets into $dir/packages"
+            nested="$dir/assets/assets"
+            if [ -d "$nested" ]; then
+              cp -a "$nested/." "$dir/assets/"
+              rm -rf "$nested"
+              echo "Flattened duplicated assets in $dir"
             else
-              echo "Skip: toastify.css not found under $dir/assets/packages/fluttertoast"
+              echo "Skip: no nested assets in $dir"
+            fi
+          done
+
+      - name: Fix package asset paths
+        run: |
+          for dir in AINoval/build/web AINoval/build/admin_web; do
+            pkg_dir="$dir/assets/packages"
+            if [ -d "$pkg_dir" ]; then
+              mkdir -p "$dir/packages"
+              cp -a "$pkg_dir/." "$dir/packages/"
+              echo "Copied all package assets from $pkg_dir to $dir/packages"
+            else
+              echo "Skip: no assets/packages in $dir"
             fi
           done
 
