@@ -59,6 +59,15 @@ jobs:
         working-directory: AINoval
         run: flutter build web --release -t lib/admin_main.dart --output build/admin_web
 
+      - name: Fix fluttertoast asset path
+        run: |
+          for dir in AINoval/build/web AINoval/build/admin_web; do
+            if [ -d "$dir/assets/packages" ]; then
+              mkdir -p "$dir/packages"
+              cp -a "$dir/assets/packages/." "$dir/packages/"
+            fi
+          done
+
       - name: Prepare dist assets
         run: |
           rm -rf deploy/dist/web deploy/dist/admin_web
