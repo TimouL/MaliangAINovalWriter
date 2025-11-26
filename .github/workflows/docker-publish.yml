@@ -65,8 +65,8 @@ jobs:
             nested="$dir/assets/assets"
             if [ -d "$nested" ]; then
               cp -a "$nested/." "$dir/assets/"
-              rm -rf "$nested"
-              echo "Flattened duplicated assets in $dir"
+              # 保留原始 assets/assets 路径，避免运行时仍按双重前缀请求字体/图标
+              echo "Flattened (kept) duplicated assets in $dir"
             else
               echo "Skip: no nested assets in $dir"
             fi
