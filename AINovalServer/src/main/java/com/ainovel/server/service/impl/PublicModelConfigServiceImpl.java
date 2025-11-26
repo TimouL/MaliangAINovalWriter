@@ -415,7 +415,7 @@ public class PublicModelConfigServiceImpl implements PublicModelConfigService {
                             log.info("API Key验证成功: {} - {}", config.getProvider(), config.getModelId());
                         } else {
                             entry.setValidationError("API Key验证失败");
-                            log.warn("API Key验证失败: {} - {}", config.getProvider(), config.getModelId());
+                            log.warn("API Key验证失败:端点 {} -类型： {} -模型： {}", config.getApiEndpoint(), config.getProvider(), config.getModelId());
                         }
                         return entry;
                     })

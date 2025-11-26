@@ -576,7 +576,8 @@
     // 🎯 页面加载完成后的初始化
     document.addEventListener('DOMContentLoaded', function() {
       enhanceTaichiPattern();
-      const progressInterval = simulateProgress();
+      const enableLoadingAnimation = false;
+      const progressInterval = enableLoadingAnimation ? simulateProgress() : null;
       
       // ✨ 隐藏加载指示器
       window.addEventListener('flutter-first-frame', function() {
@@ -603,7 +604,9 @@
         window.performance.measure('app-boot', 'app-start', 'app-ready');
         console.log('🚀 App boot time:', window.performance.getEntriesByName('app-boot')[0].duration + 'ms');
         
-        clearInterval(progressInterval);
+        if (progressInterval) {
+          clearInterval(progressInterval);
+        }
       });
     });
     

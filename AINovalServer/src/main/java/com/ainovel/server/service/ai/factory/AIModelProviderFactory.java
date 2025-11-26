@@ -17,8 +17,10 @@ import com.ainovel.server.service.ai.langchain4j.TogetherAILangChain4jModelProvi
 import com.ainovel.server.service.ai.langchain4j.DoubaoLangChain4jModelProvider;
 import com.ainovel.server.service.ai.langchain4j.ZhipuLangChain4jModelProvider;
 import com.ainovel.server.service.ai.langchain4j.QwenLangChain4jModelProvider;
+import com.ainovel.server.service.ai.genai.GoogleGenAIGeminiModelProvider;
 import com.ainovel.server.service.ai.observability.ChatModelListenerManager;
 import com.ainovel.server.service.ai.observability.TraceContextManager;
+import org.springframework.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
@@ -84,19 +86,28 @@ public class AIModelProviderFactory {
         // 1. 创建具体的、未被装饰的Provider实例，并按需注入监听器管理器
         ChatModelListenerManager lm = enableObservability ? listenerManager : null;
 
+        // 统一端点优先：有自定义端点时使用用户端点，否则回退官方默认
+        String endpoint = StringUtils.hasText(apiEndpoint) ? apiEndpoint : null;
+
         AIModelProvider concreteProvider = switch (providerName.toLowerCase()) {
-            case "openai" -> new OpenAILangChain4jModelProvider(modelName, apiKey, apiEndpoint, proxyConfig, lm);
-            case "anthropic" -> new AnthropicLangChain4jModelProvider(modelName, apiKey, apiEndpoint, lm);
-            case "gemini" -> new GeminiLangChain4jModelProvider(modelName, apiKey, apiEndpoint, proxyConfig, lm);
+            case "openai" -> new OpenAILangChain4jModelProvider(modelName, apiKey, endpoint, proxyConfig, lm);
+            case "anthropic" -> new AnthropicLangChain4jModelProvider(modelName, apiKey, endpoint, lm);
+            case "gemini" -> {
+                // LangChain4j Gemini 不支持自定义 baseUrl；有端点时改用 REST Provider 以尊重用户端点
+                if (StringUtils.hasText(endpoint)) {
+                    yield new GoogleGenAIGeminiModelProvider(modelName, apiKey, endpoint);
+                }
+                yield new GeminiLangChain4jModelProvider(modelName, apiKey, endpoint, proxyConfig, lm);
+            }
             //case "gemini-rest" -> new com.ainovel.server.service.ai.genai.GoogleGenAIGeminiModelProvider(modelName, apiKey, apiEndpoint);
-            case "openrouter" -> new OpenRouterLangChain4jModelProvider(modelName, apiKey, apiEndpoint, proxyConfig, lm);
-            case "siliconflow" -> new SiliconFlowLangChain4jModelProvider(modelName, apiKey, apiEndpoint, lm);
-            case "togetherai" -> new TogetherAILangChain4jModelProvider(modelName, apiKey, apiEndpoint, proxyConfig, lm);
-            case "doubao", "ark", "volcengine", "bytedance" -> new DoubaoLangChain4jModelProvider(modelName, apiKey, apiEndpoint, proxyConfig, lm);
-            case "zhipu", "glm" -> new ZhipuLangChain4jModelProvider(modelName, apiKey, apiEndpoint, proxyConfig, lm);
-            case "qwen", "dashscope", "tongyi", "alibaba" -> new QwenLangChain4jModelProvider(modelName, apiKey, apiEndpoint, proxyConfig, lm);
-            case "x-ai", "grok" -> new GrokModelProvider(modelName, apiKey, apiEndpoint, proxyConfig);
-            case "anthropic-native" -> new AnthropicModelProvider(modelName, apiKey, apiEndpoint);
+            case "openrouter" -> new OpenRouterLangChain4jModelProvider(modelName, apiKey, endpoint, proxyConfig, lm);
+            case "siliconflow" -> new SiliconFlowLangChain4jModelProvider(modelName, apiKey, endpoint, lm);
+            case "togetherai" -> new TogetherAILangChain4jModelProvider(modelName, apiKey, endpoint, proxyConfig, lm);
+            case "doubao", "ark", "volcengine", "bytedance" -> new DoubaoLangChain4jModelProvider(modelName, apiKey, endpoint, proxyConfig, lm);
+            case "zhipu", "glm" -> new ZhipuLangChain4jModelProvider(modelName, apiKey, endpoint, proxyConfig, lm);
+            case "qwen", "dashscope", "tongyi", "alibaba" -> new QwenLangChain4jModelProvider(modelName, apiKey, endpoint, proxyConfig, lm);
+            case "x-ai", "grok" -> new GrokModelProvider(modelName, apiKey, endpoint, proxyConfig);
+            case "anthropic-native" -> new AnthropicModelProvider(modelName, apiKey, endpoint);
             default -> throw new IllegalArgumentException("不支持的AI提供商: " + providerName);
         };
 
@@ -131,7 +142,12 @@ public class AIModelProviderFactory {
         String p = providerName != null ? providerName.toLowerCase() : "";
         if ("gemini".equals(p) || "gemini-rest".equals(p)) {
             // 工具调用分支：强制使用 LangChain4j Gemini Provider（函数调用直连）
-            AIModelProvider concrete = new GeminiLangChain4jModelProvider(modelName, apiKey, apiEndpoint, proxyConfig, listenerManager);
+            AIModelProvider concrete;
+            if (StringUtils.hasText(apiEndpoint)) {
+                concrete = new GoogleGenAIGeminiModelProvider(modelName, apiKey, apiEndpoint);
+            } else {
+                concrete = new GeminiLangChain4jModelProvider(modelName, apiKey, apiEndpoint, proxyConfig, listenerManager);
+            }
             TracingAIModelProviderDecorator decorated = new TracingAIModelProviderDecorator(
                     concrete, eventPublisher, traceContextManager, true /* is LangChain4j */);
             log.debug("工具调用分支: 使用 LangChain4j Gemini Provider 包装追踪: {}", modelName);
