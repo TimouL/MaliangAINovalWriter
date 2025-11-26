@@ -75,9 +75,13 @@ jobs:
             for icon in Icon-192.png Icon-512.png Icon-maskable-192.png Icon-maskable-512.png; do
               for candidate in "$dir/icons/$icon" "$dir/$icon" "AINoval/web/icons/$icon"; do
                 if [ -f "$candidate" ]; then
-                  # 仅在目标不存在时复制，避免同路径/同文件报错
-                  [ -f "$dir/icons/$icon" ] || cp "$candidate" "$dir/icons/$icon"
-                  [ -f "$dir/$icon" ] || cp "$candidate" "$dir/$icon"
+                  # 仅在目标不存在且源路径不同的情况下复制，避免同路径报错
+                  if [ ! -f "$dir/icons/$icon" ] && [ "$candidate" != "$dir/icons/$icon" ]; then
+                    cp "$candidate" "$dir/icons/$icon"
+                  fi
+                  if [ ! -f "$dir/$icon" ] && [ "$candidate" != "$dir/$icon" ]; then
+                    cp "$candidate" "$dir/$icon"
+                  fi
                   break
                 fi
               done
