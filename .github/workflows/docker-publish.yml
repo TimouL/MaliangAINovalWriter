@@ -53,11 +53,11 @@ jobs:
 
       - name: Build Flutter web (app)
         working-directory: AINoval
-        run: flutter build web --release --output build/web
+        run: flutter build web --release --base-href / --output build/web
 
       - name: Build Flutter web (admin)
         working-directory: AINoval
-        run: flutter build web --release -t lib/admin_main.dart --output build/admin_web
+        run: flutter build web --release -t lib/admin_main.dart --base-href /admin/ --output build/admin_web
 
       - name: Flatten Flutter web assets
         run: |
