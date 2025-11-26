@@ -77,6 +77,27 @@ jobs:
                 cp "$dir/assets/$manifest" "$dir/$manifest"
               fi
             done
+
+            # 确保字体存在并镜像到 /fonts 直连路径
+            src_fonts_repo="AINoval/assets/fonts"
+            fonts_assets="$dir/assets/fonts"
+            mkdir -p "$fonts_assets" "$dir/fonts"
+            if [ -d "$src_fonts_repo" ]; then
+              rsync -a --ignore-existing "$src_fonts_repo/" "$fonts_assets/"
+            fi
+            if [ -d "$dir/assets/fonts" ]; then
+              rsync -a "$dir/assets/fonts/" "$dir/fonts/"
+            fi
+
+            # 确保图标文件存在
+            for icon in Icon-192.png Icon-512.png; do
+              for candidate in "$dir/$icon" "AINoval/build/web/$icon" "AINoval/build/admin_web/$icon" "AINoval/web/$icon"; do
+                if [ -f "$candidate" ]; then
+                  cp "$candidate" "$dir/$icon"
+                  break
+                fi
+              done
+            done
           done
 
       - name: Fix package asset paths

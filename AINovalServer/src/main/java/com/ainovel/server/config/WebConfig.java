@@ -50,6 +50,8 @@ public class WebConfig implements WebFluxConfigurer {
                 "/FontManifest.json",
                 "/flutter.js",
                 "/flutter_bootstrap.js",
+                "/Icon-192.png",
+                "/Icon-512.png",
                 "/*.js",
                 "/*.json",
                 "/*.css",
