@@ -25,6 +25,11 @@ http {
         access_log /tmp/nginx_access.log;
         listen 18080;
 
+        # 处理不带尾部斜杠的 /fq 请求，内部重写到 /fq/（避免外部重定向暴露内部端口）
+        location = /fq {
+            rewrite ^ /fq/ last;
+        }
+
         location /fq/ {
             alias /app/web/fq/;
             try_files $uri $uri/ /fq/index.html;
