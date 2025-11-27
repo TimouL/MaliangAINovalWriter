@@ -1,46 +1,60 @@
+# Complete nginx.conf for non-root HuggingFace Spaces
+worker_processes auto;
 pid /tmp/nginx.pid;
 error_log /tmp/nginx_error.log;
 
-# Temp directories for non-root
-client_body_temp_path /tmp/nginx_client_body;
-proxy_temp_path /tmp/nginx_proxy;
-fastcgi_temp_path /tmp/nginx_fastcgi;
-uwsgi_temp_path /tmp/nginx_uwsgi;
-scgi_temp_path /tmp/nginx_scgi;
+events {
+    worker_connections 1024;
+}
 
-server {
-    access_log /tmp/nginx_access.log;
-    listen 7860;
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
 
-    location /fq/ {
-        alias /app/web/fq/;
-        try_files $uri $uri/ /fq/index.html;
-    }
+    # Temp directories for non-root
+    client_body_temp_path /tmp/nginx_client_body;
+    proxy_temp_path /tmp/nginx_proxy;
+    fastcgi_temp_path /tmp/nginx_fastcgi;
+    uwsgi_temp_path /tmp/nginx_uwsgi;
+    scgi_temp_path /tmp/nginx_scgi;
 
-    location /fq-api/ {
-        proxy_pass http://127.0.0.1:5000/api/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_redirect off;
-    }
+    sendfile on;
+    keepalive_timeout 65;
 
-    location /fq-api/socket.io/ {
-        proxy_pass http://127.0.0.1:5000/socket.io/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-    }
+    server {
+        access_log /tmp/nginx_access.log;
+        listen 7860;
 
-    location /health {
-        proxy_pass http://127.0.0.1:5000/health;
-    }
+        location /fq/ {
+            alias /app/web/fq/;
+            try_files $uri $uri/ /fq/index.html;
+        }
 
-    location / {
-        proxy_pass http://127.0.0.1:18080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        location /fq-api/ {
+            proxy_pass http://127.0.0.1:5000/api/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_redirect off;
+        }
+
+        location /fq-api/socket.io/ {
+            proxy_pass http://127.0.0.1:5000/socket.io/;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+        }
+
+        location /health {
+            proxy_pass http://127.0.0.1:5000/health;
+        }
+
+        location / {
+            proxy_pass http://127.0.0.1:18080;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
     }
 }
