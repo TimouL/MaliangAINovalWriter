@@ -65,6 +65,12 @@ jobs:
         working-directory: AINoval
         run: flutter build web --release -t lib/admin_main.dart --base-href /admin/ --output build/admin_web
 
+      - name: Fix admin_web index.html (remove part.js preload)
+        run: |
+          # admin_web 不使用 deferred 导入，移除分片预加载避免 404
+          sed -i '/<link rel="preload" href="main.dart.js_[0-9]*\.part\.js"/d' AINoval/build/admin_web/index.html
+          echo "Removed part.js preload from admin_web/index.html"
+
       - name: List Flutter build output
         run: |
           echo "=== Flutter build/web output ==="
