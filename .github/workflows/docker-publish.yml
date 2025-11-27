@@ -206,5 +206,6 @@ jobs:
           context: .
           file: ./deploy/fanqie-integrated/Dockerfile
           push: true
+          no-cache: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
