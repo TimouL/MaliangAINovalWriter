@@ -52,7 +52,7 @@ COPY --from=fanqie-frontend /workspace/frontend/dist/ /app/web/fq/
 COPY deploy/fanqie-integrated/entrypoint.sh /app/entrypoint.sh
 COPY deploy/fanqie-integrated/supervisord.conf /app/supervisord.conf
 COPY deploy/fanqie-integrated/nginx.conf.sample /etc/nginx/nginx.conf
-RUN chmod +x /app/entrypoint.sh && mkdir -p /data /tmp && chmod -R 777 /data /tmp
+RUN chmod +x /app/entrypoint.sh && mkdir -p /data /tmp /var/log/ainoval && chmod -R 777 /data /tmp /var/log/ainoval
 
 EXPOSE 7860
 
