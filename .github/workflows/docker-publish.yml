@@ -171,7 +171,11 @@ jobs:
               echo "Found dart part files in $dir"
             else
               echo "No main.dart.js_* part files in $dir (single bundle)"
-              exit 1
+              # 只有主应用 web 需要分片，admin_web 不需要
+              if [ "$dir" = "deploy/dist/web" ]; then
+                echo "ERROR: main app requires part files!"
+                exit 1
+              fi
             fi
           done
 
