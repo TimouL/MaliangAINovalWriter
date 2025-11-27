@@ -7,3 +7,7 @@ build
 task/
 AGENTS.md:Zone.Identifier
 AGENTS.md
+novel-fanqie-reader/.env
+**/*.Zone.Identifier
+*Zone.Identifier
+novel-fanqie-reader/backend/logs/
