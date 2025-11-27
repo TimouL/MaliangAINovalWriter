@@ -14,6 +14,7 @@ ENV TZ=Asia/Shanghai \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
     SPRING_PROFILES_ACTIVE=prod \
+    SERVER_PORT=8080 \
     JVM_XMS=256m \
     JVM_XMX=384m \
     DB_TYPE=sqlite \
@@ -54,6 +55,6 @@ COPY deploy/fanqie-integrated/supervisord.conf /app/supervisord.conf
 COPY deploy/fanqie-integrated/nginx.conf.sample /etc/nginx/nginx.conf
 RUN chmod +x /app/entrypoint.sh && mkdir -p /data /tmp /var/log/ainoval && chmod -R 777 /data /tmp /var/log/ainoval
 
-EXPOSE 7860
+EXPOSE 18080
 
 CMD ["/usr/bin/supervisord", "-c", "/app/supervisord.conf"]
