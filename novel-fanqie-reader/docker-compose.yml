@@ -1,0 +1,172 @@
+services:
+  backend:
+    build:
+      context: backend
+      dockerfile: Dockerfile
+    container_name: fanqie
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    ports:
+      - "5000:5000"
+    environment:
+      # Flask Settings
+      - PYTHONPATH=/app
+      - FLASK_APP=app.py
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - PYTHONUNBUFFERED=1
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-a-very-secret-key-please-change}
+      - JWT_ACCESS_TOKEN_EXPIRES_MINUTES=${JWT_ACCESS_TOKEN_EXPIRES_MINUTES:-60}
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-another-secret-key-please-change}
+      - FLASK_LOG_LEVEL=${FLASK_LOG_LEVEL:-INFO}
+
+      # Database Settings
+      - DB_HOST=mysql_db
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_PORT=3306
+      - SQLALCHEMY_ECHO=${SQLALCHEMY_ECHO:-False}
+
+      # Celery Settings
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - TZ=${TZ:-UTC}
+
+      - DATA_BASE_PATH=/app/data
+      - NOVEL_SAVE_PATH=/app/data/novel_downloads
+      - NOVEL_STATUS_PATH=/app/data/novel_status
+      - NOVEL_MAX_WORKERS=${NOVEL_MAX_WORKERS:-5}
+      - NOVEL_REQUEST_TIMEOUT=${NOVEL_REQUEST_TIMEOUT:-20}
+      - NOVEL_MAX_RETRIES=${NOVEL_MAX_RETRIES:-3}
+      - NOVEL_MIN_WAIT_TIME=${NOVEL_MIN_WAIT_TIME:-800}
+      - NOVEL_MAX_WAIT_TIME=${NOVEL_MAX_WAIT_TIME:-1500}
+      - NOVEL_MIN_CONNECT_TIMEOUT=${NOVEL_MIN_CONNECT_TIMEOUT:-3.1}
+      - NOVEL_FORMAT=${NOVEL_FORMAT:-epub}
+      - NOVEL_BULK_FILES=${NOVEL_BULK_FILES:-False}
+      - NOVEL_AUTO_CLEAR_DUMP=${NOVEL_AUTO_CLEAR_DUMP:-True}
+      - NOVEL_USE_OFFICIAL_API=${NOVEL_USE_OFFICIAL_API:-True}
+      - NOVEL_USE_PROXY_API=${NOVEL_USE_PROXY_API:-False}
+      - NOVEL_IID=${NOVEL_IID:-}
+      - NOVEL_IID_SPAWN_TIME=${NOVEL_IID_SPAWN_TIME:-}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: gunicorn --bind 0.0.0.0:5000 --worker-class=eventlet --log-level=${FLASK_LOG_LEVEL:-INFO} "app:app"
+    restart: always
+
+  # Celery Worker Service
+  celery_worker:
+    build:
+      context: backend
+      dockerfile: Dockerfile
+    container_name: fanqie_celery_worker
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+      - ./backend/novel_downloader:/app/novel_downloader
+    environment:
+      # Flask Settings
+      - PYTHONPATH=/app
+      - FLASK_APP=app.py
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - PYTHONUNBUFFERED=1
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-a-very-secret-key-please-change}
+      - JWT_ACCESS_TOKEN_EXPIRES_MINUTES=${JWT_ACCESS_TOKEN_EXPIRES_MINUTES:-60}
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-another-secret-key-please-change}
+      - FLASK_LOG_LEVEL=${FLASK_LOG_LEVEL:-INFO}
+
+      # Database Settings
+      - DB_HOST=mysql_db
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_PORT=3306
+      - SQLALCHEMY_ECHO=${SQLALCHEMY_ECHO:-False}
+
+      # Celery Settings
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - TZ=${TZ:-UTC}
+
+      - DATA_BASE_PATH=/app/data
+      - NOVEL_SAVE_PATH=/app/data/novel_downloads
+      - NOVEL_STATUS_PATH=/app/data/novel_status
+      - NOVEL_MAX_WORKERS=${NOVEL_MAX_WORKERS:-5}
+      - NOVEL_REQUEST_TIMEOUT=${NOVEL_REQUEST_TIMEOUT:-20}
+      - NOVEL_MAX_RETRIES=${NOVEL_MAX_RETRIES:-3}
+      - NOVEL_MIN_WAIT_TIME=${NOVEL_MIN_WAIT_TIME:-800}
+      - NOVEL_MAX_WAIT_TIME=${NOVEL_MAX_WAIT_TIME:-1500}
+      - NOVEL_MIN_CONNECT_TIMEOUT=${NOVEL_MIN_CONNECT_TIMEOUT:-3.1}
+      - NOVEL_FORMAT=${NOVEL_FORMAT:-epub}
+      - NOVEL_BULK_FILES=${NOVEL_BULK_FILES:-False}
+      - NOVEL_AUTO_CLEAR_DUMP=${NOVEL_AUTO_CLEAR_DUMP:-True}
+      - NOVEL_USE_OFFICIAL_API=${NOVEL_USE_OFFICIAL_API:-True}
+      - NOVEL_USE_PROXY_API=${NOVEL_USE_PROXY_API:-False}
+      - NOVEL_IID=${NOVEL_IID:-}
+      - NOVEL_IID_SPAWN_TIME=${NOVEL_IID_SPAWN_TIME:-}
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: celery -A celery_init:celery_app worker --loglevel=${FLASK_LOG_LEVEL:-INFO} -O fair
+    restart: always
+
+  # MySQL
+  mysql:
+    image: mysql:8
+    container_name: mysql_db
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    restart: always
+    healthcheck:
+      test: [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u$$MYSQL_USER",
+          "-p$$MYSQL_PASSWORD",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 2
+
+  # Redis
+  redis:
+    image: redis:8.0-rc1-bookworm
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    command: sh -c "bun i && bun dev"
+    restart: always
+    ports:
+      - 5173:5173
+
+volumes:
+  mysql_data:
+  redis_data:

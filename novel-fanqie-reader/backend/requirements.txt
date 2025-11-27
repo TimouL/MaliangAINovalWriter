@@ -1,0 +1,48 @@
+# Flask Core & Extensions
+Flask
+Flask-JWT-Extended
+Flask-SQLAlchemy
+Flask-SocketIO
+Werkzeug
+
+# Async mode for Flask-SocketIO
+eventlet
+
+# Database
+PyMySQL
+
+# Background Tasks
+celery[redis]
+
+# Web Requests & Parsing
+requests
+beautifulsoup4
+lxml # Often used by beautifulsoup4
+
+# Text Analysis & Word Cloud
+jieba
+wordcloud
+matplotlib # Dependency for wordcloud? Keep for now.
+
+# File Handling & EPUB
+ebooklib
+PyYAML
+
+# Novel Crawler Specific
+PyCryptodome
+fake_useragent
+
+python-dotenv
+cryptography
+tqdm
+certifi
+ascii-magic
+charset-normalizer
+colorama
+idna
+six
+soupsieve
+typing_extensions
+urllib3
+
+gunicorn
