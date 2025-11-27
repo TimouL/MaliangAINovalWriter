@@ -52,8 +52,8 @@ COPY --from=fanqie-frontend /workspace/frontend/dist/ /app/web/fq/
 COPY deploy/fanqie-integrated/entrypoint.sh /app/entrypoint.sh
 COPY deploy/fanqie-integrated/supervisord.conf /app/supervisord.conf
 COPY deploy/fanqie-integrated/nginx.conf.sample /etc/nginx/conf.d/default.conf
-RUN chmod +x /app/entrypoint.sh && mkdir -p /data /var/log
+RUN chmod +x /app/entrypoint.sh && mkdir -p /data /tmp && chmod -R 777 /data /tmp
 
-EXPOSE 80
+EXPOSE 7860
 
 CMD ["/usr/bin/supervisord", "-c", "/app/supervisord.conf"]
