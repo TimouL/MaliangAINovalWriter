@@ -159,6 +159,9 @@ jobs:
           cp -a AINoval/build/web/. deploy/dist/web/
           cp -a AINoval/build/admin_web/. deploy/dist/admin_web/
 
+          echo "=== After cp: deploy/dist/web JS files ==="
+          ls -la deploy/dist/web/*.js
+
           # 基础文件校验，构建缺失则提前失败
           for dir in deploy/dist/web deploy/dist/admin_web; do
             for req in main.dart.js Icon-192.png Icon-512.png; do
@@ -168,6 +171,7 @@ jobs:
               echo "Found dart part files in $dir"
             else
               echo "No main.dart.js_* part files in $dir (single bundle)"
+              exit 1
             fi
           done
 
