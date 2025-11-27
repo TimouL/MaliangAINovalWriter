@@ -5,7 +5,7 @@ COPY novel-fanqie-reader/frontend/ ./
 ENV VITE_BASE=/fq/ \
     VITE_API_BASE=/fq-api \
     VITE_SOCKET_PATH=/fq-api/socket.io
-RUN npm install && npm run build
+RUN npm install && npm run build-only
 
 ## Stage 2: runtime with Java + Python + supervisord
 FROM eclipse-temurin:21-jre
