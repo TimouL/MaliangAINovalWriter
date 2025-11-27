@@ -42,7 +42,7 @@ COPY deploy/dist/admin_web/ /app/admin_web/
 
 # Copy fanqie backend
 COPY novel-fanqie-reader/backend/ /app/novel-fanqie-reader/backend/
-RUN pip3 install --no-cache-dir -r /app/novel-fanqie-reader/backend/requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages -r /app/novel-fanqie-reader/backend/requirements.txt
 
 # Copy built fanqie frontend into web/fq for static serving via Spring
 RUN mkdir -p /app/web/fq/
