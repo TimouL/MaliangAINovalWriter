@@ -65,6 +65,20 @@ jobs:
         working-directory: AINoval
         run: flutter build web --release -t lib/admin_main.dart --base-href /admin/ --output build/admin_web
 
+      - name: List Flutter build output
+        run: |
+          echo "=== Flutter build/web output ==="
+          ls -la AINoval/build/web/
+          echo ""
+          echo "=== JS files in build/web ==="
+          ls -la AINoval/build/web/*.js || echo "No JS files"
+          echo ""
+          echo "=== Flutter build/admin_web output ==="
+          ls -la AINoval/build/admin_web/
+          echo ""
+          echo "=== JS files in build/admin_web ==="
+          ls -la AINoval/build/admin_web/*.js || echo "No JS files"
+
       - name: Flatten Flutter web assets
         run: |
           for dir in AINoval/build/web AINoval/build/admin_web; do
