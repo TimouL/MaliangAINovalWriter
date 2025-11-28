@@ -16,6 +16,7 @@ import 'billing_audit_screen.dart';
 import 'model_pricing_management_screen.dart';
 import '../knowledge_base/knowledge_extraction_task_management_page.dart';
 import 'content_review_screen.dart';
+import 'infrastructure_config_screen.dart';
 import 'package:get_it/get_it.dart';
 import 'package:ainoval/services/api_service/repositories/impl/admin/llm_observability_repository_impl.dart';
 import 'package:ainoval/widgets/analytics/analytics_card.dart';
@@ -52,6 +53,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     const ModelPricingManagementScreen(), // 11: 模型定价管理
     const KnowledgeExtractionTaskManagementPage(), // 12: AI拆书任务管理
     const ContentReviewScreen(), // 13: 内容审核
+    const InfrastructureConfigScreen(), // 14: 基础设施配置
   ];
 
   @override

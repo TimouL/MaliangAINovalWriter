@@ -194,6 +194,15 @@ class AdminSidebar extends StatelessWidget {
                     index: 13,
                   ),
                 ),
+                PermissionGuard.permission(
+                  PermissionService.SYSTEM_CONFIG,
+                  child: _buildMenuItem(
+                    context,
+                    icon: Icons.dns,
+                    title: '基础设施',
+                    index: 14,
+                  ),
+                ),
               ],
             ),
           ),
