@@ -34,7 +34,13 @@ public class AuthenticatedChromaEmbeddingStore implements EmbeddingStore<TextSeg
     
     private final EmbeddingStore<TextSegment> delegate;
     
-    private AuthenticatedChromaEmbeddingStore(Builder builder) {
+    // Protected no-arg constructor for Spring CGLIB proxy support
+    protected AuthenticatedChromaEmbeddingStore() {
+        this.delegate = null;
+    }
+    
+    // Package-private constructor for Builder pattern
+    AuthenticatedChromaEmbeddingStore(Builder builder) {
         boolean hasAuth = builder.authToken != null && !builder.authToken.trim().isEmpty();
         log.info("初始化Chroma嵌入存储（API v2），URL: {}, 集合: {}, 认证: {}", 
                 builder.baseUrl, builder.collectionName, hasAuth ? "已启用" : "未启用");
