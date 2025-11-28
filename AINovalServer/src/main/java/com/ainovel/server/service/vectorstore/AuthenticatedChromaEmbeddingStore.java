@@ -19,7 +19,6 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
-import dev.langchain4j.store.embedding.chroma.ChromaEmbeddingStore;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
@@ -36,76 +35,49 @@ public class AuthenticatedChromaEmbeddingStore implements EmbeddingStore<TextSeg
     private final EmbeddingStore<TextSegment> delegate;
     
     private AuthenticatedChromaEmbeddingStore(Builder builder) {
-        if (builder.authToken != null && !builder.authToken.trim().isEmpty()) {
-            log.info("初始化带认证的Chroma嵌入存储，URL: {}, 集合: {}", builder.baseUrl, builder.collectionName);
-            this.delegate = createAuthenticatedStore(builder);
-        } else {
-            log.info("初始化Chroma嵌入存储（无认证），URL: {}, 集合: {}", builder.baseUrl, builder.collectionName);
-            this.delegate = ChromaEmbeddingStore.builder()
-                    .baseUrl(builder.baseUrl)
-                    .collectionName(builder.collectionName)
-                    .timeout(builder.timeout)
-                    .logRequests(builder.logRequests)
-                    .logResponses(builder.logResponses)
-                    .build();
-        }
+        boolean hasAuth = builder.authToken != null && !builder.authToken.trim().isEmpty();
+        log.info("初始化Chroma嵌入存储（API v2），URL: {}, 集合: {}, 认证: {}", 
+                builder.baseUrl, builder.collectionName, hasAuth ? "已启用" : "未启用");
+        // 统一使用 CustomChromaClient (支持 Chroma API v2)
+        this.delegate = createChromaStore(builder, hasAuth);
     }
     
     /**
-     * 创建带认证的存储实例
-     * 由于ChromaClient是包级私有的，我们需要通过反射来注入自定义的OkHttpClient
+     * 创建Chroma存储实例（使用自定义客户端，支持API v2）
      */
-    private EmbeddingStore<TextSegment> createAuthenticatedStore(Builder builder) {
-        try {
-            // 创建带认证拦截器的OkHttpClient
-            OkHttpClient.Builder httpClientBuilder = new OkHttpClient.Builder()
-                    .callTimeout(builder.timeout)
-                    .connectTimeout(builder.timeout)
-                    .readTimeout(builder.timeout)
-                    .writeTimeout(builder.timeout)
-                    .addInterceptor(new ChromaAuthInterceptor(builder.authToken));
-            
-            if (builder.logRequests) {
-                httpClientBuilder.addInterceptor(chain -> {
-                    Request request = chain.request();
-                    log.debug("Chroma请求: {} {}", request.method(), request.url());
-                    return chain.proceed(request);
-                });
-            }
-            
-            if (builder.logResponses) {
-                httpClientBuilder.addInterceptor(chain -> {
-                    Response response = chain.proceed(chain.request());
-                    log.debug("Chroma响应: {} {}", response.code(), response.message());
-                    return response;
-                });
-            }
-            
-            OkHttpClient httpClient = httpClientBuilder.build();
-            
-            // 使用反射创建ChromaEmbeddingStore并注入自定义HttpClient
-            // 由于LangChain4j 1.0.0-beta3的ChromaClient不支持自定义HttpClient，
-            // 我们需要使用一个变通方案：通过系统属性或环境变量来配置
-            
-            // 方案：直接使用标准构建器，但在请求前通过代理方式添加认证
-            // 这里我们采用更可靠的方式：创建一个HTTP代理来注入认证头
-            
-            // 实际上，最简单的方式是使用Retrofit + OkHttp直接调用Chroma API
-            // 但为了最小化改动，我们使用ChromaEmbeddingStore并接受其限制
-            
-            // 注意：由于LangChain4j的限制，我们需要使用自定义的Chroma客户端实现
-            return new CustomChromaClient(builder, httpClient);
-            
-        } catch (Exception e) {
-            log.error("创建带认证的Chroma存储失败，回退到无认证模式", e);
-            return ChromaEmbeddingStore.builder()
-                    .baseUrl(builder.baseUrl)
-                    .collectionName(builder.collectionName)
-                    .timeout(builder.timeout)
-                    .logRequests(builder.logRequests)
-                    .logResponses(builder.logResponses)
-                    .build();
+    private EmbeddingStore<TextSegment> createChromaStore(Builder builder, boolean withAuth) {
+        // 创建OkHttpClient
+        OkHttpClient.Builder httpClientBuilder = new OkHttpClient.Builder()
+                .callTimeout(builder.timeout)
+                .connectTimeout(builder.timeout)
+                .readTimeout(builder.timeout)
+                .writeTimeout(builder.timeout);
+        
+        // 如果启用认证，添加认证拦截器
+        if (withAuth) {
+            httpClientBuilder.addInterceptor(new ChromaAuthInterceptor(builder.authToken));
         }
+        
+        if (builder.logRequests) {
+            httpClientBuilder.addInterceptor(chain -> {
+                Request request = chain.request();
+                log.debug("Chroma请求: {} {}", request.method(), request.url());
+                return chain.proceed(request);
+            });
+        }
+        
+        if (builder.logResponses) {
+            httpClientBuilder.addInterceptor(chain -> {
+                Response response = chain.proceed(chain.request());
+                log.debug("Chroma响应: {} {}", response.code(), response.message());
+                return response;
+            });
+        }
+        
+        OkHttpClient httpClient = httpClientBuilder.build();
+        
+        // 使用自定义的Chroma客户端（支持API v2）
+        return new CustomChromaClient(builder, httpClient);
     }
     
     public static Builder builder() {
