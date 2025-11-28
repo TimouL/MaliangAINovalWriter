@@ -74,7 +74,9 @@ public class StateAggregatorService {
             return taskStateService.trySetRunning(event.getTaskId(), event.getExecutionNodeId())
                 .doOnNext(updated -> {
                     if (!updated) {
-                        log.warn("无法更新任务{}为运行状态，可能已被另一个消费者处理", event.getTaskId());
+                        // 这是正常的并发场景，多个消费者竞争同一任务时会发生
+                        // 使用 DEBUG 级别避免日志污染
+                        log.debug("无法更新任务{}为运行状态，可能已被另一个消费者处理", event.getTaskId());
                     }
                 })
                 .then(); // 转换为 Mono<Void>
