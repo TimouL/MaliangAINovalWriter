@@ -22,7 +22,7 @@ import lombok.extern.slf4j.Slf4j;
  * 向量存储配置类
  */
 @Slf4j
-@Configuration
+@Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(name = "vectorstore.chroma.enabled", havingValue = "true", matchIfMissing = false)
 public class VectorStoreConfig {
     
