@@ -74,7 +74,7 @@ public class CustomChromaClient implements EmbeddingStore<TextSegment> {
     
     private String getOrCreateCollection() throws IOException {
         // 首先尝试获取已存在的集合
-        String getUrl = baseUrl + "/api/v1/collections/" + collectionName;
+        String getUrl = baseUrl + "/api/v2/collections/" + collectionName;
         Request getRequest = new Request.Builder()
                 .url(getUrl)
                 .get()
@@ -91,7 +91,7 @@ public class CustomChromaClient implements EmbeddingStore<TextSegment> {
         }
         
         // 集合不存在，创建新集合
-        String createUrl = baseUrl + "/api/v1/collections";
+        String createUrl = baseUrl + "/api/v2/collections";
         Map<String, Object> createBody = new HashMap<>();
         createBody.put("name", collectionName);
         createBody.put("get_or_create", true);
@@ -167,7 +167,7 @@ public class CustomChromaClient implements EmbeddingStore<TextSegment> {
         }
         
         try {
-            String url = baseUrl + "/api/v1/collections/" + collectionId + "/add";
+            String url = baseUrl + "/api/v2/collections/" + collectionId + "/add";
             
             List<List<Float>> embeddingsList = embeddings.stream()
                     .map(this::toFloatList)
@@ -230,7 +230,7 @@ public class CustomChromaClient implements EmbeddingStore<TextSegment> {
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         try {
-            String url = baseUrl + "/api/v1/collections/" + collectionId + "/query";
+            String url = baseUrl + "/api/v2/collections/" + collectionId + "/query";
             
             List<List<Float>> queryEmbeddings = Collections.singletonList(
                     toFloatList(request.queryEmbedding()));
@@ -319,7 +319,7 @@ public class CustomChromaClient implements EmbeddingStore<TextSegment> {
         }
         
         try {
-            String url = baseUrl + "/api/v1/collections/" + collectionId + "/delete";
+            String url = baseUrl + "/api/v2/collections/" + collectionId + "/delete";
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("ids", new ArrayList<>(ids));
