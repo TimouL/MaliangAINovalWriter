@@ -452,9 +452,10 @@ public class KnowledgeExtractionTaskExecutor implements BackgroundTaskExecutable
                     if ("completed".equalsIgnoreCase(status) || "success".equalsIgnoreCase(status)) {
                         log.info("✅ 下载任务完成: celeryTaskId={}, status={}", celeryTaskId, status);
                         return Mono.just(status);
-                    } else if ("failed".equalsIgnoreCase(status)) {
+                    } else if ("failed".equalsIgnoreCase(status) || "failure".equalsIgnoreCase(status)) {
+                        // 支持 FAILED 和 FAILURE 两种失败状态
                         String errorMsg = task.getMessage() != null ? task.getMessage() : "未知错误";
-                        log.error("❌ 下载任务失败: celeryTaskId={}, error={}", celeryTaskId, errorMsg);
+                        log.error("❌ 下载任务失败: celeryTaskId={}, status={}, error={}", celeryTaskId, status, errorMsg);
                         return Mono.error(new RuntimeException("下载任务失败: " + errorMsg));
                     } else if ("terminated".equalsIgnoreCase(status)) {
                         log.error("❌ 下载任务被终止: celeryTaskId={}", celeryTaskId);
@@ -466,11 +467,13 @@ public class KnowledgeExtractionTaskExecutor implements BackgroundTaskExecutable
                     }
                 })
                 .onErrorResume(error -> {
-                    if (error.getMessage() != null && 
-                        (error.getMessage().contains("下载任务失败") || 
-                         error.getMessage().contains("下载任务被终止") ||
-                         error.getMessage().contains("下载任务超时"))) {
-                        // 这些是业务错误，直接传播
+                    String errorMsg = error.getMessage();
+                    if (errorMsg != null && 
+                        (errorMsg.contains("下载任务失败") || 
+                         errorMsg.contains("下载任务被终止") ||
+                         errorMsg.contains("下载任务超时"))) {
+                        // 这些是业务错误，直接传播，不再重试
+                        log.error("下载任务终止，停止轮询: {}", errorMsg);
                         return Mono.error(error);
                     }
                     
