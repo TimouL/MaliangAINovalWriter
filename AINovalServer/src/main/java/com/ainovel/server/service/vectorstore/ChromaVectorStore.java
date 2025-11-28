@@ -21,7 +21,6 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
-import dev.langchain4j.store.embedding.chroma.ChromaEmbeddingStore;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -55,7 +54,7 @@ public class ChromaVectorStore implements VectorStore {
     private static final int MAX_ERROR_COUNT = 5; // 最大错误次数
 
     /**
-     * 创建Chroma向量存储
+     * 创建Chroma向量存储（无认证）
      *
      * @param chromaUrl Chroma服务URL
      * @param collectionName 集合名称
@@ -65,22 +64,37 @@ public class ChromaVectorStore implements VectorStore {
             @Value("${vectorstore.chroma.collection:ainovel}") String collectionName,
             @Value("${vectorstore.chroma.max-retries:3}") int maxRetries,
             @Value("${vectorstore.chroma.retry-delay-ms:1000}") int retryDelayMs) {
+        this(chromaUrl, collectionName, maxRetries, retryDelayMs, null);
+    }
+    
+    /**
+     * 创建Chroma向量存储（支持认证）
+     *
+     * @param chromaUrl Chroma服务URL
+     * @param collectionName 集合名称
+     * @param maxRetries 最大重试次数
+     * @param retryDelayMs 重试延迟毫秒
+     * @param authToken 认证Token（可选，为空则不启用认证）
+     */
+    public ChromaVectorStore(String chromaUrl, String collectionName, int maxRetries, int retryDelayMs, String authToken) {
         this.collectionName = collectionName;
         this.maxRetries = maxRetries;
         this.retryDelayMs = retryDelayMs;
-        this.embeddingStore = initializeStore(chromaUrl, collectionName);
+        this.embeddingStore = initializeStore(chromaUrl, collectionName, authToken);
     }
 
     /**
      * 初始化向量存储
      */
-    private EmbeddingStore<TextSegment> initializeStore(String chromaUrl, String collectionName) {
-        log.info("初始化Chroma向量存储，URL: {}, 集合: {}", chromaUrl, collectionName);
+    private EmbeddingStore<TextSegment> initializeStore(String chromaUrl, String collectionName, String authToken) {
+        boolean hasAuth = authToken != null && !authToken.trim().isEmpty();
+        log.info("初始化Chroma向量存储，URL: {}, 集合: {}, 认证: {}", chromaUrl, collectionName, hasAuth ? "已启用" : "未启用");
 
         try {
-            return ChromaEmbeddingStore.builder()
+            return AuthenticatedChromaEmbeddingStore.builder()
                     .baseUrl(chromaUrl)
                     .collectionName(collectionName + UUID.randomUUID().toString())
+                    .authToken(authToken)
                     .build();
         } catch (Exception e) {
             log.error("初始化Chroma向量存储失败", e);

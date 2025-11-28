@@ -206,7 +206,7 @@ ainovel:
 # 向量存储配置
 vectorstore:
   chroma:
-    enabled: false
+    enabled: ${CHROMA_ENABLED:false}
     url: http://localhost:18000
     collection: ainovel
     use-random-collection: false

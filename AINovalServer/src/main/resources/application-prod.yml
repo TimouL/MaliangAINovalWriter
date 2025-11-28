@@ -155,10 +155,12 @@ ainovel:
 # 向量存储配置
 vectorstore:
   chroma:
+    enabled: ${CHROMA_ENABLED:false}    # 是否启用Chroma向量库，通过环境变量CHROMA_ENABLED控制
     url: ${CHROMA_URL:http://localhost:18000}
     collection: ${CHROMA_COLLECTION:ainovel}
     use-random-collection: true
     reuse-collection: true
+    auth-token: ${CHROMA_AUTH_TOKEN:}  # Chroma认证Token，通过环境变量CHROMA_AUTH_TOKEN配置
 
 # 代理配置（生产环境可能不需要）
 proxy:
