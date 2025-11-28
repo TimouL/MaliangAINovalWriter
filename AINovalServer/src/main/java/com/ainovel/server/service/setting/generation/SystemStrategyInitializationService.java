@@ -30,7 +30,7 @@ public class SystemStrategyInitializationService {
     private final EnhancedUserPromptTemplateRepository templateRepository;
     private final SettingTreeGenerationPromptProvider promptProvider;
 
-    @Value("${ainovel.ai.features.setting-tree-generation.init-on-startup:false}")
+    @Value("${ainovel.ai.features.setting-tree-generation.init-on-startup:true}")
     private boolean settingTreeGenerationInitOnStartup;
 
     /**

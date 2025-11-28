@@ -56,6 +56,9 @@ public class InfrastructureConfigLoader implements ApplicationContextInitializer
             // 加载 Chroma 配置
             loadChromaConfig(config, env);
             
+            // 加载安全配置 (JWT Secret)
+            loadSecurityConfig(config, env);
+            
             log.info("基础设施配置加载完成");
             
         } catch (Exception e) {
@@ -165,6 +168,30 @@ public class InfrastructureConfigLoader implements ApplicationContextInitializer
             String envToken = env.getProperty("CHROMA_AUTH_TOKEN");
             if (envToken == null || envToken.isEmpty()) {
                 System.setProperty("vectorstore.chroma.auth-token", chroma.get("authToken").asText());
+            }
+        }
+    }
+
+    /**
+     * 加载安全配置 (JWT Secret)
+     */
+    private void loadSecurityConfig(JsonNode config, ConfigurableEnvironment env) {
+        if (!config.has("security")) {
+            return;
+        }
+        
+        JsonNode security = config.get("security");
+        
+        // JWT Secret
+        if (security.has("jwtSecret") && !security.get("jwtSecret").asText().isEmpty()) {
+            String envSecret = env.getProperty("JWT_SECRET");
+            if (envSecret == null || envSecret.isEmpty()) {
+                String jwtSecret = security.get("jwtSecret").asText();
+                System.setProperty("jwt.secret", jwtSecret);
+                System.setProperty("ainovel.security.jwt.secret-key", jwtSecret);
+                log.info("从配置文件加载 JWT Secret");
+            } else {
+                log.info("使用环境变量中的 JWT Secret");
             }
         }
     }

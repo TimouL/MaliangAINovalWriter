@@ -3,8 +3,10 @@ package com.ainovel.server.service.setup;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.concurrent.TimeUnit;
 
 import org.bson.Document;
@@ -283,6 +285,12 @@ public class SetupService {
                 chroma.put("url", config.chromaUrl() != null ? config.chromaUrl() : "");
                 chroma.put("authToken", config.chromaAuthToken() != null ? config.chromaAuthToken() : "");
                 
+                // 安全配置 - 自动生成 JWT Secret
+                ObjectNode security = root.putObject("security");
+                String jwtSecret = generateJwtSecret();
+                security.put("jwtSecret", jwtSecret);
+                log.info("已自动生成 JWT Secret");
+                
                 // 写入文件
                 String json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(root);
                 try (FileOutputStream fos = new FileOutputStream(CONFIG_FILE_PATH)) {
@@ -395,6 +403,17 @@ public class SetupService {
     private String maskUri(String uri) {
         if (uri == null) return null;
         return uri.replaceAll("://[^:]+:[^@]+@", "://***:***@");
+    }
+
+    /**
+     * 生成安全的 JWT Secret
+     * 使用 SecureRandom 生成 64 字节的随机数，然后 Base64 编码
+     */
+    private String generateJwtSecret() {
+        SecureRandom secureRandom = new SecureRandom();
+        byte[] secretBytes = new byte[64];
+        secureRandom.nextBytes(secretBytes);
+        return Base64.getEncoder().encodeToString(secretBytes);
     }
 
     // DTO Records

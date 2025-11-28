@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import com.ainovel.server.domain.model.AIRequest;
@@ -22,10 +23,14 @@ import reactor.core.scheduler.Schedulers;
 /**
  * 关键词提取服务实现类
  * 使用轻量级LLM从文本中提取关键词
+ * 
+ * @deprecated 此服务已废弃，请使用后台配置的公共模型进行关键词提取。
+ *             仅当设置了 ai.gemini.enabled=true 时才会创建 Bean。
  */
 @Slf4j
 @Deprecated
 @Service
+@ConditionalOnProperty(name = "ai.gemini.enabled", havingValue = "true", matchIfMissing = false)
 public class KeywordExtractionServiceImpl implements KeywordExtractionService {
 
     private final AIService aiService;
@@ -40,10 +45,10 @@ public class KeywordExtractionServiceImpl implements KeywordExtractionService {
     @Value("${ainovel.ai.keyword-extraction.max-text-length:3000}")
     private int maxTextLength;
 
-    @Value("${ai.gemini.api-key}")
+    @Value("${ai.gemini.api-key:}")
     private String apiKey;
 
-    @Value("${ai.gemini.api-key:https://generativelanguage.googleapis.com/v1beta/models/}")
+    @Value("${ai.gemini.endpoint:https://generativelanguage.googleapis.com/v1beta/models/}")
     private String endPoint;
     
     @Autowired

@@ -1,6 +1,7 @@
 package com.ainovel.server.config;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -10,12 +11,17 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * 聊天语言模型配置类
+ * 
+ * @deprecated 此配置类已废弃，模型 API Key 应通过后台"公共模型管理"功能配置。
+ *             仅当设置了 ai.openai.api-key 且 ai.openai.enabled=true 时才会创建 Bean。
  */
 @Slf4j
+@Deprecated
 @Configuration
+@ConditionalOnProperty(name = "ai.openai.enabled", havingValue = "true", matchIfMissing = false)
 public class ChatLanguageModelConfig {
 
-    @Value("${ai.openai.api-key}")
+    @Value("${ai.openai.api-key:}")
     private String openaiApiKey;
 
     @Value("${ai.openai.chat-model:deepseek/deepseek-v3-base:free}")
@@ -34,9 +40,14 @@ public class ChatLanguageModelConfig {
      */
     @Bean
     public ChatLanguageModel chatLanguageModel() {
+        if (openaiApiKey == null || openaiApiKey.isBlank()) {
+            log.warn("未配置 ai.openai.api-key，跳过 ChatLanguageModel Bean 创建");
+            return null;
+        }
+        
         log.info("配置ChatLanguageModel，模型：{}", openaiChatModel);
 
-        ChatLanguageModel chatLanguageModel= OpenAiChatModel.builder()
+        ChatLanguageModel chatLanguageModel = OpenAiChatModel.builder()
                 .baseUrl("https://openrouter.ai/api/v1")
                 .apiKey(openaiApiKey)
                 .modelName(openaiChatModel)
@@ -45,8 +56,6 @@ public class ChatLanguageModelConfig {
                 .logRequests(true)
                 .logResponses(true)
                 .build();
-        //String message= chatLanguageModel.("1+1=");
-        //log.info(message);
         return chatLanguageModel;
     }
 }

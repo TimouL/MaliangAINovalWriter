@@ -112,7 +112,8 @@ management:
 ainovel:
   security:
     jwt:
-      secret-key: ${JWT_SECRET_KEY}
+      # 优先使用环境变量，其次使用 infrastructure.json 中的配置
+      secret-key: ${JWT_SECRET:${ainovel.security.jwt.secret-key:changeme_in_production}}
       expiration-time: 86400000  # 24小时
       refresh-token-expiration: 604800000  # 7天
   performance:
@@ -173,7 +174,8 @@ proxy:
   trustAllCerts: false   # 排障时可临时 true，生产请 false
 
 jwt:
-  secret: ${JWT_SECRET}
+  # 优先使用环境变量，其次使用 infrastructure.json 中的配置
+  secret: ${JWT_SECRET:${jwt.secret:changeme_in_production}}
   expiration: 86400000
   refresh-expiration: 604800000
 
@@ -182,10 +184,11 @@ ai:
     default: ${AI_DEFAULT_MODEL:gpt-3.5-turbo}
     temperature: ${AI_TEMPERATURE:0.7}
     max-tokens: ${AI_MAX_TOKENS:204800}
+  # 以下配置已废弃，模型 API Key 应通过后台"公共模型管理"配置
   openai:
-    api-key: ${OPENAI_API_KEY}
+    api-key: ${OPENAI_API_KEY:}
   gemini:
-    api-key: ${GEMINI_API_KEY}
+    api-key: ${GEMINI_API_KEY:}
 
 jasypt:
   encryptor:
