@@ -31,9 +31,16 @@ def _ensure_fresh_iid() -> None:
     spawn_ms = int(getattr(cfg, "iid_spawn_time", "0") or "0")
     if not getattr(cfg, "iid", None) or (now_ms - spawn_ms) // 1000 >= _IID_EXPIRE_SEC:
         log.info("iid 已使用超过 12 小时或不存在，自动更换 …")
-        cfg.iid = str(get_iid())
+        new_iid = str(get_iid())
+        cfg.iid = new_iid
         cfg.iid_spawn_time = str(now_ms)
-        cfg.save()
+        log.info(f"新 iid 已生成: {new_iid}")
+        # 尝试保存配置，如果失败则仅记录警告（配置已在内存中更新）
+        try:
+            cfg.save()
+            log.info("iid 已保存到配置文件")
+        except Exception as e:
+            log.warning(f"无法保存 iid 到配置文件（将仅在内存中使用）: {e}")
 
 
 def get_static_key() -> str:
