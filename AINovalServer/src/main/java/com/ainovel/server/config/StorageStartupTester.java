@@ -46,6 +46,13 @@ public class StorageStartupTester implements ApplicationRunner {
             log.info("阿里云OSS连接测试已禁用，跳过测试");
             return;
         }
+        
+        // 当存储提供者为local时，跳过OSS测试
+        String provider = storageProperties.getDefaultProvider();
+        if ("local".equalsIgnoreCase(provider)) {
+            log.info("存储提供者为local，跳过阿里云OSS连接测试");
+            return;
+        }
 
         log.info("开始测试阿里云OSS连接...");
 

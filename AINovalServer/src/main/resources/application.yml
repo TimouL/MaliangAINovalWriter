@@ -167,8 +167,8 @@ ainovel:
   storage:
     default-provider: alioss
     covers-path: covers
-    # 是否在启动时测试OSS连接
-    test-on-startup: true
+    # 是否在启动时测试OSS连接（当STORAGE_PROVIDER为local时自动跳过）
+    test-on-startup: ${STORAGE_TEST_ON_STARTUP:false}
     # 阿里云OSS配置
     aliyun:
       endpoint: https://oss-cn-shanghai.aliyuncs.com

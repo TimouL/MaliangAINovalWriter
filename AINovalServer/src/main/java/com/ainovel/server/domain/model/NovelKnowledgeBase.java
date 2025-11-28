@@ -41,8 +41,8 @@ public class NovelKnowledgeBase {
     
     /**
      * 番茄小说ID（如果是番茄小说来源）
+     * 索引已在类级别@CompoundIndex(name = "fanqie_novel_idx")中定义
      */
-    @Indexed(unique = true, sparse = true)
     private String fanqieNovelId;
     
     /**

@@ -129,7 +129,7 @@ ainovel:
   storage:
     default-provider: ${STORAGE_PROVIDER:alioss}
     covers-path: ${STORAGE_COVERS_PATH:covers}
-    test-on-startup: true
+    test-on-startup: ${STORAGE_TEST_ON_STARTUP:false}
     aliyun:
       endpoint: ${ALIYUN_OSS_ENDPOINT}
       access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID}
