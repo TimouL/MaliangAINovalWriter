@@ -72,6 +72,14 @@ public class ChromaEmbeddingStoreProvider {
     private final ConcurrentHashMap<String, AtomicInteger> errorCount = new ConcurrentHashMap<>();
 
     /**
+     * Protected no-arg constructor for Spring CGLIB proxy support.
+     * Should not be used directly.
+     */
+    protected ChromaEmbeddingStoreProvider() {
+        this.embeddingStore = null;
+    }
+    
+    /**
      * 构造函数 - 初始化ChromaEmbeddingStore
      */
     public ChromaEmbeddingStoreProvider(EmbeddingStore<TextSegment> embeddingStore) {

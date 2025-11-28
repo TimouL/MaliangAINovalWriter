@@ -52,6 +52,19 @@ public class CustomChromaClient implements EmbeddingStore<TextSegment> {
     private final String database;
     private String collectionId;
     
+    /**
+     * Protected no-arg constructor for potential proxy support.
+     * Should not be used directly.
+     */
+    protected CustomChromaClient() {
+        this.httpClient = null;
+        this.objectMapper = null;
+        this.baseUrl = null;
+        this.collectionName = null;
+        this.tenant = null;
+        this.database = null;
+    }
+    
     public CustomChromaClient(AuthenticatedChromaEmbeddingStore.Builder builder, OkHttpClient httpClient) {
         this.httpClient = httpClient;
         this.objectMapper = new ObjectMapper();

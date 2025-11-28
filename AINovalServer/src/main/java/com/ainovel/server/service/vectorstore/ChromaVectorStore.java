@@ -54,6 +54,17 @@ public class ChromaVectorStore implements VectorStore {
     private static final int MAX_ERROR_COUNT = 5; // 最大错误次数
 
     /**
+     * Protected no-arg constructor for Spring CGLIB proxy support.
+     * Should not be used directly.
+     */
+    protected ChromaVectorStore() {
+        this.embeddingStore = null;
+        this.collectionName = null;
+        this.maxRetries = 3;
+        this.retryDelayMs = 1000;
+    }
+    
+    /**
      * 创建Chroma向量存储（无认证）
      *
      * @param chromaUrl Chroma服务URL
