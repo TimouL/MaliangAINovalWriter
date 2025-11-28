@@ -88,17 +88,20 @@ aliyun:
 app:
   name: AINoval
 
+# 日志配置 - 支持环境变量覆盖
+# LOG_LEVEL_ROOT: 根日志级别 (TRACE/DEBUG/INFO/WARN/ERROR)
+# LOG_LEVEL_APP: 应用日志级别
 logging:
   level:
-    root: INFO
-    com.ainovel: DEBUG
-    org.springframework.data.mongodb: INFO
-    org.springframework.web: INFO
-    reactor.netty: INFO
-    com.ainovel.server: DEBUG
-    com.ainovel.server.task: INFO
-    org.springframework.amqp: INFO
-    org.apache.skywalking: INFO
+    root: ${LOG_LEVEL_ROOT:INFO}
+    com.ainovel: ${LOG_LEVEL_APP:DEBUG}
+    org.springframework.data.mongodb: ${LOG_LEVEL_MONGODB:INFO}
+    org.springframework.web: ${LOG_LEVEL_WEB:INFO}
+    reactor.netty: ${LOG_LEVEL_NETTY:INFO}
+    com.ainovel.server: ${LOG_LEVEL_APP:DEBUG}
+    com.ainovel.server.task: ${LOG_LEVEL_TASK:INFO}
+    org.springframework.amqp: ${LOG_LEVEL_AMQP:INFO}
+    org.apache.skywalking: ${LOG_LEVEL_SKYWALKING:INFO}
   # 日志配置已迁移到 logback-spring.xml
   # 使用规范的logback配置，集成SkyWalking链路追踪
   config: classpath:logback-spring.xml

@@ -59,6 +59,9 @@ public class InfrastructureConfigLoader implements ApplicationContextInitializer
             // 加载安全配置 (JWT Secret)
             loadSecurityConfig(config, env);
             
+            // 加载日志配置
+            loadLoggingConfig(config, env);
+            
             log.info("基础设施配置加载完成");
             
         } catch (Exception e) {
@@ -194,6 +197,50 @@ public class InfrastructureConfigLoader implements ApplicationContextInitializer
                 log.info("使用环境变量中的 JWT Secret");
             }
         }
+    }
+
+    /**
+     * 加载日志配置
+     * 支持的日志级别: TRACE, DEBUG, INFO, WARN, ERROR
+     */
+    private void loadLoggingConfig(JsonNode config, ConfigurableEnvironment env) {
+        if (!config.has("logging")) {
+            return;
+        }
+        
+        JsonNode logging = config.get("logging");
+        
+        // 根日志级别
+        if (logging.has("rootLevel") && !logging.get("rootLevel").asText().isEmpty()) {
+            String envLevel = env.getProperty("LOG_LEVEL_ROOT");
+            if (envLevel == null || envLevel.isEmpty()) {
+                String level = logging.get("rootLevel").asText().toUpperCase();
+                if (isValidLogLevel(level)) {
+                    System.setProperty("LOG_LEVEL_ROOT", level);
+                    log.info("从配置文件加载根日志级别: {}", level);
+                }
+            }
+        }
+        
+        // 应用日志级别
+        if (logging.has("appLevel") && !logging.get("appLevel").asText().isEmpty()) {
+            String envLevel = env.getProperty("LOG_LEVEL_APP");
+            if (envLevel == null || envLevel.isEmpty()) {
+                String level = logging.get("appLevel").asText().toUpperCase();
+                if (isValidLogLevel(level)) {
+                    System.setProperty("LOG_LEVEL_APP", level);
+                    log.info("从配置文件加载应用日志级别: {}", level);
+                }
+            }
+        }
+    }
+
+    /**
+     * 验证日志级别是否有效
+     */
+    private boolean isValidLogLevel(String level) {
+        return "TRACE".equals(level) || "DEBUG".equals(level) || 
+               "INFO".equals(level) || "WARN".equals(level) || "ERROR".equals(level);
     }
 
     /**

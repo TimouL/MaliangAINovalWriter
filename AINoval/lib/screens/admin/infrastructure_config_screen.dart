@@ -32,6 +32,13 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
   
   String _storageProvider = 'local';
   bool _chromaEnabled = false;
+  
+  // 日志配置
+  bool _isEditingLogging = false;
+  String _rootLogLevel = 'INFO';
+  String _appLogLevel = 'DEBUG';
+  
+  static const List<String> _logLevels = ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR'];
 
   @override
   void initState() {
@@ -108,6 +115,8 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
           _buildStorageSection(),
           const SizedBox(height: 24),
           _buildChromaSection(),
+          const SizedBox(height: 24),
+          _buildLoggingSection(),
         ],
       ),
     );
@@ -428,5 +437,123 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
       const SnackBar(content: Text('Chroma 配置已保存并应用')),
     );
     setState(() => _isEditingChroma = false);
+  }
+
+  Widget _buildLoggingSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.article_outlined,
+                      color: Colors.orange.shade700,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      '日志配置',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(width: 8),
+                    Chip(
+                      label: const Text('需重启生效'),
+                      backgroundColor: Colors.orange.shade100,
+                      labelStyle: const TextStyle(fontSize: 10),
+                    ),
+                  ],
+                ),
+                TextButton.icon(
+                  onPressed: () => setState(() => _isEditingLogging = !_isEditingLogging),
+                  icon: Icon(_isEditingLogging ? Icons.close : Icons.edit),
+                  label: Text(_isEditingLogging ? '取消' : '编辑'),
+                ),
+              ],
+            ),
+            const Divider(),
+            if (!_isEditingLogging) ...[
+              ListTile(
+                leading: const Icon(Icons.layers),
+                title: const Text('根日志级别'),
+                subtitle: Text(_rootLogLevel),
+              ),
+              ListTile(
+                leading: const Icon(Icons.code),
+                title: const Text('应用日志级别'),
+                subtitle: Text(_appLogLevel),
+              ),
+            ] else ...[
+              const Text(
+                '日志级别说明：TRACE < DEBUG < INFO < WARN < ERROR',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: _rootLogLevel,
+                      decoration: const InputDecoration(
+                        labelText: '根日志级别',
+                        border: OutlineInputBorder(),
+                        helperText: '控制所有日志输出',
+                      ),
+                      items: _logLevels.map((level) => DropdownMenuItem(
+                        value: level,
+                        child: Text(level),
+                      )).toList(),
+                      onChanged: (value) {
+                        if (value != null) setState(() => _rootLogLevel = value);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: _appLogLevel,
+                      decoration: const InputDecoration(
+                        labelText: '应用日志级别',
+                        border: OutlineInputBorder(),
+                        helperText: '控制应用代码日志',
+                      ),
+                      items: _logLevels.map((level) => DropdownMenuItem(
+                        value: level,
+                        child: Text(level),
+                      )).toList(),
+                      onChanged: (value) {
+                        if (value != null) setState(() => _appLogLevel = value);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  ElevatedButton(
+                    onPressed: _saveLoggingConfig,
+                    child: const Text('保存'),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _saveLoggingConfig() async {
+    // TODO: 调用后端 API 保存日志配置
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('日志配置已保存，需要重启应用后生效')),
+    );
+    setState(() => _isEditingLogging = false);
   }
 }

@@ -60,6 +60,9 @@ public class StateAggregatorService {
     
     /**
      * 处理任务开始事件 (响应式)
+     * 
+     * 注意：任务状态更新已由 LocalTaskTransport/TaskConsumer 在发布事件前完成，
+     * 此处仅用于记录事件和执行额外的聚合逻辑，不再重复更新状态。
      */
     @EventListener
     public Mono<Void> onTaskStarted(TaskStartedEvent event) {
@@ -69,17 +72,14 @@ public class StateAggregatorService {
                 return Mono.empty();
             }
             
-            log.debug("处理任务开始事件: {}", event.getTaskId());
+            log.debug("处理任务开始事件: taskId={}, executionNodeId={}", 
+                    event.getTaskId(), event.getExecutionNodeId());
             
-            return taskStateService.trySetRunning(event.getTaskId(), event.getExecutionNodeId())
-                .doOnNext(updated -> {
-                    if (!updated) {
-                        // 这是正常的并发场景，多个消费者竞争同一任务时会发生
-                        // 使用 DEBUG 级别避免日志污染
-                        log.debug("无法更新任务{}为运行状态，可能已被另一个消费者处理", event.getTaskId());
-                    }
-                })
-                .then(); // 转换为 Mono<Void>
+            // 任务状态已由事件发布方（LocalTaskTransport/TaskConsumer）更新为 RUNNING，
+            // 此处不再重复调用 trySetRunning，避免产生误导性的警告日志。
+            // 如需执行额外的聚合逻辑（如更新父任务状态摘要），可在此处添加。
+            
+            return Mono.empty();
         });
     }
     
