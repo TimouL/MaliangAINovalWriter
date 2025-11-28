@@ -18,8 +18,11 @@ import com.ainovel.server.service.prompt.providers.TextExpansionPromptProvider;
 import com.ainovel.server.service.prompt.providers.TextRefactorPromptProvider;
 import com.ainovel.server.service.prompt.providers.TextSummaryPromptProvider;
 import com.ainovel.server.service.prompt.providers.SettingTreeGenerationPromptProvider;
+import com.ainovel.server.service.prompt.providers.SettingGenerationToolPromptProvider;
 import com.ainovel.server.service.prompt.providers.NovelComposePromptProvider;
 import com.ainovel.server.service.prompt.providers.StoryPlotContinuationPromptProvider;
+import com.ainovel.server.service.prompt.providers.KnowledgeExtractionPromptProvider;
+import com.ainovel.server.service.prompt.providers.KnowledgeExtractionOutlinePromptProvider;
 
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -70,6 +73,15 @@ public class PromptProviderFactory {
     @Autowired
     private StoryPlotContinuationPromptProvider storyPlotContinuationPromptProvider;
 
+    @Autowired
+    private KnowledgeExtractionPromptProvider knowledgeExtractionPromptProvider;
+
+    @Autowired
+    private KnowledgeExtractionOutlinePromptProvider knowledgeExtractionOutlinePromptProvider;
+
+    @Autowired
+    private SettingGenerationToolPromptProvider settingGenerationToolPromptProvider;
+
     @PostConstruct
     public void initializeProviders() {
         // 注册所有提示词提供器
@@ -85,6 +97,9 @@ public class PromptProviderFactory {
         registerProvider(settingTreeGenerationPromptProvider);
         registerProvider(novelComposePromptProvider);
         registerProvider(storyPlotContinuationPromptProvider);
+        registerProvider(knowledgeExtractionPromptProvider);
+        registerProvider(knowledgeExtractionOutlinePromptProvider);
+        registerProvider(settingGenerationToolPromptProvider);
         
         log.info("提示词提供器注册完成，可用类型: {}", providers.keySet());
     }
