@@ -1,0 +1,2 @@
+org.springframework.context.ApplicationContextInitializer=\
+  com.ainovel.server.config.infrastructure.InfrastructureConfigLoader

@@ -83,6 +83,9 @@ public class SecurityConfig {
                 // 放开 Actuator 指标端点给 Prometheus 抓取
                 .pathMatchers(HttpMethod.GET, "/actuator/prometheus").permitAll()
                 .pathMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+                // 系统状态和配置向导接口（无需认证）
+                .pathMatchers("/api/system/status").permitAll()
+                .pathMatchers("/api/setup/**").permitAll()
                 .pathMatchers("/api/v1/auth/**").permitAll()
                 .pathMatchers("/api/v1/auth/login").permitAll()
                 .pathMatchers("/api/v1/auth/login/phone").permitAll()

@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import 'blocs/admin/admin_bloc.dart';
 import 'config/app_config.dart';
 import 'screens/admin/admin_login_screen.dart';
+import 'screens/setup/setup_wizard_screen.dart';
+import 'services/api_service/repositories/setup_repository.dart';
 import 'services/api_service/repositories/impl/admin_repository_impl.dart';
 import 'services/api_service/repositories/impl/admin/llm_observability_repository_impl.dart';
 import 'services/api_service/repositories/impl/subscription_repository_impl.dart';
@@ -92,8 +94,72 @@ class AdminApp extends StatelessWidget {
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.system,
-        home: const AdminLoginScreen(),
+        home: const _SystemStatusChecker(),
       ),
     );
+  }
+}
+
+/// 系统状态检查器
+/// 检测系统是否需要配置向导
+class _SystemStatusChecker extends StatefulWidget {
+  const _SystemStatusChecker();
+
+  @override
+  State<_SystemStatusChecker> createState() => _SystemStatusCheckerState();
+}
+
+class _SystemStatusCheckerState extends State<_SystemStatusChecker> {
+  bool _isLoading = true;
+  bool _needsSetup = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSystemStatus();
+  }
+
+  Future<void> _checkSystemStatus() async {
+    try {
+      final repository = SetupRepository();
+      final status = await repository.getSystemStatus();
+      
+      setState(() {
+        _isLoading = false;
+        _needsSetup = status.restrictedMode || !status.setupCompleted;
+      });
+    } catch (e) {
+      // 如果无法连接服务器，可能是首次部署，显示配置向导
+      setState(() {
+        _isLoading = false;
+        _needsSetup = true;
+        _error = e.toString();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('正在检测系统状态...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_needsSetup) {
+      return const SetupWizardScreen();
+    }
+
+    return const AdminLoginScreen();
   }
 }

@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "setupCompleted": false,
+  "setupTime": null,
+  "mongodb": {
+    "uri": "mongodb://localhost:27017/ainovel"
+  },
+  "storage": {
+    "provider": "local",
+    "local": {
+      "basePath": "/data/storage"
+    },
+    "oss": {
+      "endpoint": "",
+      "accessKeyId": "",
+      "accessKeySecret": "",
+      "bucketName": "",
+      "region": ""
+    }
+  },
+  "chroma": {
+    "enabled": false,
+    "url": "",
+    "authToken": ""
+  }
+}
