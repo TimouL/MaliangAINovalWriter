@@ -34,17 +34,22 @@ import okhttp3.Response;
 /**
  * 自定义Chroma客户端实现
  * 直接使用OkHttp调用Chroma REST API，支持Token认证
+ * 支持 Chroma 1.0.0+ 的多租户 API v2
  */
 @Slf4j
 public class CustomChromaClient implements EmbeddingStore<TextSegment> {
     
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     private static final String DOCUMENT_KEY = "document";
+    private static final String DEFAULT_TENANT = "default_tenant";
+    private static final String DEFAULT_DATABASE = "default_database";
     
     private final OkHttpClient httpClient;
     private final ObjectMapper objectMapper;
     private final String baseUrl;
     private final String collectionName;
+    private final String tenant;
+    private final String database;
     private String collectionId;
     
     public CustomChromaClient(AuthenticatedChromaEmbeddingStore.Builder builder, OkHttpClient httpClient) {
@@ -52,9 +57,18 @@ public class CustomChromaClient implements EmbeddingStore<TextSegment> {
         this.objectMapper = new ObjectMapper();
         this.baseUrl = normalizeUrl(builder.getBaseUrl());
         this.collectionName = builder.getCollectionName();
+        this.tenant = DEFAULT_TENANT;
+        this.database = DEFAULT_DATABASE;
         
         // 初始化时获取或创建集合
         initializeCollection();
+    }
+    
+    /**
+     * 获取集合操作的基础URL路径 (Chroma 1.0.0+ 多租户 API)
+     */
+    private String getCollectionsBasePath() {
+        return baseUrl + "/api/v2/tenants/" + tenant + "/databases/" + database + "/collections";
     }
     
     private String normalizeUrl(String url) {
@@ -73,8 +87,11 @@ public class CustomChromaClient implements EmbeddingStore<TextSegment> {
     }
     
     private String getOrCreateCollection() throws IOException {
+        String collectionsPath = getCollectionsBasePath();
+        
         // 首先尝试获取已存在的集合
-        String getUrl = baseUrl + "/api/v2/collections/" + collectionName;
+        String getUrl = collectionsPath + "/" + collectionName;
+        log.debug("尝试获取集合: {}", getUrl);
         Request getRequest = new Request.Builder()
                 .url(getUrl)
                 .get()
@@ -91,14 +108,13 @@ public class CustomChromaClient implements EmbeddingStore<TextSegment> {
         }
         
         // 集合不存在，创建新集合
-        String createUrl = baseUrl + "/api/v2/collections";
+        log.debug("创建集合: {}", collectionsPath);
         Map<String, Object> createBody = new HashMap<>();
         createBody.put("name", collectionName);
-        createBody.put("get_or_create", true);
         
         RequestBody body = RequestBody.create(objectMapper.writeValueAsString(createBody), JSON);
         Request createRequest = new Request.Builder()
-                .url(createUrl)
+                .url(collectionsPath)
                 .post(body)
                 .build();
         
@@ -167,7 +183,7 @@ public class CustomChromaClient implements EmbeddingStore<TextSegment> {
         }
         
         try {
-            String url = baseUrl + "/api/v2/collections/" + collectionId + "/add";
+            String url = getCollectionsBasePath() + "/" + collectionId + "/add";
             
             List<List<Float>> embeddingsList = embeddings.stream()
                     .map(this::toFloatList)
@@ -230,7 +246,7 @@ public class CustomChromaClient implements EmbeddingStore<TextSegment> {
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         try {
-            String url = baseUrl + "/api/v2/collections/" + collectionId + "/query";
+            String url = getCollectionsBasePath() + "/" + collectionId + "/query";
             
             List<List<Float>> queryEmbeddings = Collections.singletonList(
                     toFloatList(request.queryEmbedding()));
@@ -319,7 +335,7 @@ public class CustomChromaClient implements EmbeddingStore<TextSegment> {
         }
         
         try {
-            String url = baseUrl + "/api/v2/collections/" + collectionId + "/delete";
+            String url = getCollectionsBasePath() + "/" + collectionId + "/delete";
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("ids", new ArrayList<>(ids));
