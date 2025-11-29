@@ -63,24 +63,44 @@ public class FanqieNovelServiceImpl implements FanqieNovelService {
     }
 
     /**
-     * 使用 HttpURLConnection 发送 GET 请求 (最基础最兼容的方式)
+     * 使用 HttpURLConnection 发送 GET 请求 (参考 Python requests 库的行为)
+     * 关键配置:
+     * - Connection: keep-alive (保持连接)
+     * - Accept-Encoding: identity (禁用压缩，避免解码问题)
+     * - 完整的浏览器请求头模拟
      */
     private String sendHttpGet(String url) throws Exception {
         java.net.URL urlObj = new java.net.URL(url);
         java.net.HttpURLConnection conn = (java.net.HttpURLConnection) urlObj.openConnection();
         conn.setRequestMethod("GET");
-        conn.setConnectTimeout(10000);
+        conn.setConnectTimeout(15000);
         conn.setReadTimeout(30000);
+        conn.setInstanceFollowRedirects(true);
+        conn.setUseCaches(false);
+        
+        // 模拟浏览器请求头 (与 Python Fanqie-novel-Downloader 保持一致)
         conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
         conn.setRequestProperty("Accept", "application/json, text/javascript, */*; q=0.01");
         conn.setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7");
+        conn.setRequestProperty("Accept-Encoding", "identity");  // 禁用压缩，避免 gzip 解码问题
+        conn.setRequestProperty("Connection", "keep-alive");     // 保持连接
         conn.setRequestProperty("Referer", "https://fanqienovel.com/");
         conn.setRequestProperty("X-Requested-With", "XMLHttpRequest");
-        conn.setRequestProperty("Content-Type", "application/json");
+        conn.setRequestProperty("Cache-Control", "no-cache");
+        conn.setRequestProperty("Pragma", "no-cache");
 
         int responseCode = conn.getResponseCode();
+        log.debug("HTTP 请求: url={}, responseCode={}", url, responseCode);
+        
         if (responseCode != 200) {
-            throw new RuntimeException("HTTP 错误: " + responseCode);
+            // 读取错误响应体以获取更多信息
+            String errorBody = "";
+            try (java.io.InputStream errorStream = conn.getErrorStream()) {
+                if (errorStream != null) {
+                    errorBody = new String(errorStream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                }
+            } catch (Exception ignored) {}
+            throw new RuntimeException("HTTP 错误: " + responseCode + ", body: " + errorBody);
         }
 
         try (java.io.BufferedReader reader = new java.io.BufferedReader(
