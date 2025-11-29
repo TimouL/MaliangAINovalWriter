@@ -1,4 +1,5 @@
 # Complete nginx.conf for non-root HuggingFace Spaces
+# Updated: Removed fanqie Python service proxy (now using direct third-party API)
 worker_processes auto;
 pid /tmp/nginx.pid;
 error_log /tmp/nginx_error.log;
@@ -25,34 +26,9 @@ http {
         access_log /tmp/nginx_access.log;
         listen 18080;
 
-        # 处理不带尾部斜杠的 /fq 请求，内部重写到 /fq/（避免外部重定向暴露内部端口）
-        location = /fq {
-            rewrite ^ /fq/ last;
-        }
-
-        location /fq/ {
-            alias /app/web/fq/;
-            try_files $uri $uri/ /fq/index.html;
-        }
-
-        location /fq-api/ {
-            proxy_pass http://127.0.0.1:5000/api/;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_redirect off;
-        }
-
-        location /fq-api/socket.io/ {
-            proxy_pass http://127.0.0.1:5000/socket.io/;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection "upgrade";
-            proxy_set_header Host $host;
-        }
-
         location /health {
-            proxy_pass http://127.0.0.1:5000/health;
+            return 200 'OK';
+            add_header Content-Type text/plain;
         }
 
         location / {

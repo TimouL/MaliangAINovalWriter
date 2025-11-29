@@ -13,11 +13,9 @@ public interface FanqieNovelService {
     
     /**
      * 用户登录，获取访问令牌
-     * 
-     * @param username 用户名
-     * @param password 密码
-     * @return 访问令牌
+     * @deprecated 直连API模式下不需要登录
      */
+    @Deprecated
     Mono<String> login(String username, String password);
     
     /**
@@ -46,50 +44,44 @@ public interface FanqieNovelService {
     
     /**
      * 添加小说并开始下载
-     * 
-     * @param novelId 小说ID
-     * @param maxChapters 最大章节数（可选）
-     * @return 下载任务信息
+     * @deprecated 直连API模式不支持下载任务管理
      */
+    @Deprecated
     Mono<FanqieDownloadTask> addNovelDownloadTask(String novelId, Integer maxChapters);
     
     /**
      * 获取下载任务列表
-     * 
-     * @return 任务列表
+     * @deprecated 直连API模式不支持下载任务管理
      */
+    @Deprecated
     Mono<FanqieTaskList> getDownloadTasks();
     
     /**
      * 获取任务状态（通过Celery Task ID）
-     * 
-     * @param celeryTaskId Celery任务ID
-     * @return 任务状态信息
+     * @deprecated 直连API模式不支持下载任务管理
      */
+    @Deprecated
     Mono<FanqieDownloadTask> getTaskStatus(String celeryTaskId);
     
     /**
      * 终止下载任务
-     * 
-     * @param taskId 任务ID
-     * @return 终止结果
+     * @deprecated 直连API模式不支持下载任务管理
      */
+    @Deprecated
     Mono<FanqieDownloadTask> terminateTask(Long taskId);
     
     /**
      * 删除任务记录
-     * 
-     * @param taskId 任务ID
-     * @return 删除结果消息
+     * @deprecated 直连API模式不支持下载任务管理
      */
+    @Deprecated
     Mono<String> deleteTask(Long taskId);
     
     /**
      * 重新下载任务
-     * 
-     * @param taskId 任务ID
-     * @return 新的下载任务信息
+     * @deprecated 直连API模式不支持下载任务管理
      */
+    @Deprecated
     Mono<FanqieDownloadTask> redownloadTask(Long taskId);
     
     /**
@@ -114,10 +106,9 @@ public interface FanqieNovelService {
     
     /**
      * 下载小说文件（EPUB）
-     * 
-     * @param novelId 小说ID
-     * @return EPUB文件数据流
+     * @deprecated 直连API模式不支持EPUB下载
      */
+    @Deprecated
     Flux<DataBuffer> downloadNovelFile(String novelId);
     
     /**

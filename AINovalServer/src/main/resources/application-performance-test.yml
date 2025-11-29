@@ -187,11 +187,12 @@ jasypt:
     algorithm: PBEWITHHMACSHA512ANDAES_256
     iv-generator-classname: org.jasypt.iv.RandomIvGenerator
 
-# 番茄小说服务配置
+# 番茄小说服务配置（直连第三方API模式）
 fanqie:
   api:
-    base-url: http://localhost:5000     # 后端服务调用（内网直连）
-    public-url: http://localhost:5000   # 前端访问的公开URL（开发环境也是直连）
+    enabled: true
+    remote-config-url: https://qbin.me/r/fpoash/
+    fallback-base-url: http://qkfqapi.vv9v.cn
     timeout: 30
 
 # 支付配置（沙箱环境）

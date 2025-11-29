@@ -284,9 +284,10 @@ security:
   jwt:
     disabled: false
 
-# 番茄小说服务配置
+# 番茄小说服务配置（直连第三方API模式）
 fanqie:
   api:
-    base-url: http://127.0.0.1:5000                    # 后端服务调用（内网直连，高效）
-    public-url: https://maliangwriter.com/api/fanqie   # 前端访问的公开URL（走 Nginx 代理）
+    enabled: true
+    remote-config-url: https://qbin.me/r/fpoash/
+    fallback-base-url: http://qkfqapi.vv9v.cn
     timeout: 30 

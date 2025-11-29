@@ -1,10 +1,11 @@
 package com.ainovel.server.service.fanqie.impl;
 
+import com.ainovel.server.service.fanqie.FanqieApiConfigService;
 import com.ainovel.server.service.fanqie.FanqieNovelService;
 import com.ainovel.server.service.fanqie.dto.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.netty.channel.ChannelOption;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -16,230 +17,302 @@ import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
- * 番茄小说下载服务实现（内部API模式，无需认证）
+ * 番茄小说服务实现 - 直连第三方 API 模式
+ * 通过 qkfqapi.vv9v.cn 第三方 API 获取番茄小说数据
  */
 @Slf4j
 @Service
 public class FanqieNovelServiceImpl implements FanqieNovelService {
-    
-    private final WebClient webClient;
-    
-    public FanqieNovelServiceImpl(
-            @Value("${fanqie.api.base-url:http://127.0.0.1:5000}") String baseUrl,
-            @Value("${fanqie.api.timeout:30}") int timeoutSeconds
-    ) {
-        // 配置HttpClient
+
+    private final FanqieApiConfigService configService;
+    private final ObjectMapper objectMapper;
+    private WebClient webClient;
+
+    public FanqieNovelServiceImpl(FanqieApiConfigService configService) {
+        this.configService = configService;
+        this.objectMapper = new ObjectMapper();
+        initWebClient();
+    }
+
+    private void initWebClient() {
         HttpClient httpClient = HttpClient.create()
-                .responseTimeout(Duration.ofSeconds(timeoutSeconds))
+                .responseTimeout(Duration.ofSeconds(configService.getTimeout()))
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000);
-        
-        // 创建WebClient（内部API模式，无需认证）
+
         this.webClient = WebClient.builder()
-                .baseUrl(baseUrl)
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .defaultHeader(HttpHeaders.USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
                 .build();
-        
-        log.info("番茄小说服务客户端初始化完成（内部API模式），Base URL: {}", baseUrl);
+
+        log.info("番茄小说服务初始化完成（直连第三方API模式），API: {}", configService.getApiBaseUrl());
     }
-    
+
     @Override
     public Mono<String> login(String username, String password) {
-        // 内部API模式，不需要登录
-        log.warn("内部API模式下login方法已废弃，无需调用");
+        log.warn("直连API模式下login方法已废弃");
         return Mono.just("");
     }
-    
+
     @Override
+    @SuppressWarnings("unchecked")
     public Mono<FanqieSearchResult> searchNovels(String query) {
+        if (!configService.isEnabled()) {
+            return Mono.error(new RuntimeException("番茄小说服务未启用"));
+        }
+
+        String url = configService.getFullUrl("search") + "?key=" + query + "&tab_type=3";
         log.info("搜索番茄小说: {}", query);
-        
+
         return webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/api/search")
-                        .queryParam("query", query)
-                        .build())
+                .uri(url)
                 .retrieve()
-                .bodyToMono(FanqieSearchResult.class)
-                .doOnSuccess(result -> log.info("搜索成功，找到 {} 个结果", 
-                        result.getResults() != null ? result.getResults().size() : 0));
+                .bodyToMono(String.class)
+                .flatMap(response -> {
+                    try {
+                        Map<String, Object> json = objectMapper.readValue(response, Map.class);
+                        if ((Integer) json.getOrDefault("code", 0) != 200) {
+                            return Mono.error(new RuntimeException("API错误: " + json.get("message")));
+                        }
+
+                        Map<String, Object> data = (Map<String, Object>) json.get("data");
+                        List<Map<String, Object>> items = (List<Map<String, Object>>) data.getOrDefault("data", new ArrayList<>());
+
+                        List<FanqieNovelInfo> results = new ArrayList<>();
+                        for (Map<String, Object> item : items) {
+                            results.add(FanqieNovelInfo.builder()
+                                    .id(String.valueOf(item.get("book_id")))
+                                    .title((String) item.get("book_name"))
+                                    .author((String) item.get("author"))
+                                    .cover((String) item.get("thumb_url"))
+                                    .description((String) item.get("abstract"))
+                                    .category((String) item.get("category"))
+                                    .build());
+                        }
+
+                        FanqieSearchResult result = new FanqieSearchResult();
+                        result.setResults(results);
+                        log.info("搜索成功，找到 {} 个结果", results.size());
+                        return Mono.just(result);
+                    } catch (Exception e) {
+                        log.error("解析搜索结果失败: {}", e.getMessage());
+                        return Mono.error(e);
+                    }
+                });
     }
-    
+
     @Override
     public Mono<FanqieNovelListResponse> getNovelList(FanqieNovelListRequest request) {
-        log.info("获取番茄小说列表: page={}, perPage={}, search={}, tags={}, status={}, sort={}, order={}", 
-                request.getPage(), request.getPerPage(), request.getSearch(), 
-                request.getTags(), request.getStatus(), request.getSort(), request.getOrder());
-        
-        return webClient.get()
-                .uri(uriBuilder -> {
-                    var builder = uriBuilder.path("/api/novels")
-                            .queryParam("page", request.getPage())
-                            .queryParam("per_page", request.getPerPage());
-                    
-                    // 添加可选参数
-                    if (request.getSearch() != null && !request.getSearch().isEmpty()) {
-                        builder.queryParam("search", request.getSearch());
-                    }
-                    if (request.getTags() != null && !request.getTags().isEmpty()) {
-                        builder.queryParam("tags", request.getTags());
-                    }
-                    if (request.getStatus() != null && !request.getStatus().isEmpty()) {
-                        builder.queryParam("status", request.getStatus());
-                    }
-                    if (request.getSort() != null && !request.getSort().isEmpty()) {
-                        builder.queryParam("sort", request.getSort());
-                    }
-                    if (request.getOrder() != null && !request.getOrder().isEmpty()) {
-                        builder.queryParam("order", request.getOrder());
-                    }
-                    
-                    return builder.build();
-                })
-                .retrieve()
-                .bodyToMono(FanqieNovelListResponse.class)
-                .doOnSuccess(response -> log.info("获取小说列表成功: total={}, page={}/{}", 
-                        response.getTotal(), response.getPage(), response.getPages()));
+        // 直连模式不支持本地小说列表，返回空
+        log.warn("直连API模式不支持getNovelList，请使用searchNovels");
+        FanqieNovelListResponse response = new FanqieNovelListResponse();
+        response.setNovels(new ArrayList<>());
+        response.setTotal(0);
+        response.setPage(1);
+        response.setPages(0);
+        return Mono.just(response);
     }
-    
+
     @Override
+    @SuppressWarnings("unchecked")
     public Mono<FanqieNovelDetail> getNovelDetail(String novelId) {
+        if (!configService.isEnabled()) {
+            return Mono.error(new RuntimeException("番茄小说服务未启用"));
+        }
+
+        String url = configService.getFullUrl("detail") + "?book_id=" + novelId;
         log.info("获取番茄小说详情: {}", novelId);
-        
+
         return webClient.get()
-                .uri("/api/novels/{novelId}", novelId)
+                .uri(url)
                 .retrieve()
-                .bodyToMono(FanqieNovelDetail.class)
-                .doOnSuccess(detail -> log.info("获取小说详情成功: {}", detail.getTitle()));
+                .bodyToMono(String.class)
+                .flatMap(response -> {
+                    try {
+                        Map<String, Object> json = objectMapper.readValue(response, Map.class);
+                        if ((Integer) json.getOrDefault("code", 0) != 200) {
+                            return Mono.error(new RuntimeException("API错误: " + json.get("message")));
+                        }
+
+                        Map<String, Object> data = (Map<String, Object>) json.get("data");
+
+                        FanqieNovelDetail detail = new FanqieNovelDetail();
+                        detail.setId(String.valueOf(data.get("book_id")));
+                        detail.setTitle((String) data.get("book_name"));
+                        detail.setAuthor((String) data.get("author"));
+                        detail.setCoverImageUrl((String) data.get("thumb_url"));
+                        detail.setDescription((String) data.get("abstract"));
+                        detail.setTags((String) data.get("category"));
+                        detail.setStatus((String) data.getOrDefault("creation_status", "连载中"));
+
+                        log.info("获取小说详情成功: {}", detail.getTitle());
+                        return Mono.just(detail);
+                    } catch (Exception e) {
+                        log.error("解析小说详情失败: {}", e.getMessage());
+                        return Mono.error(e);
+                    }
+                });
     }
-    
+
     @Override
     public Mono<FanqieDownloadTask> addNovelDownloadTask(String novelId, Integer maxChapters) {
-        log.info("添加番茄小说下载任务: novelId={}, maxChapters={}", novelId, maxChapters);
-        
-        FanqieDownloadRequest request = FanqieDownloadRequest.builder()
-                .novelId(novelId)
-                .maxChapters(maxChapters)
-                .build();
-        
-        return webClient.post()
-                .uri("/api/novels")
-                .bodyValue(request)
-                .retrieve()
-                .bodyToMono(FanqieDownloadTask.class)
-                .doOnSuccess(task -> log.info("下载任务创建成功: taskId={}, status={}", 
-                        task.getId(), task.getStatus()));
+        log.warn("直连API模式不支持下载任务管理");
+        return Mono.error(new UnsupportedOperationException("直连API模式不支持下载任务"));
     }
-    
+
     @Override
     public Mono<FanqieTaskList> getDownloadTasks() {
-        log.info("获取番茄小说下载任务列表");
-        
-        return webClient.get()
-                .uri("/api/tasks/list")
-                .retrieve()
-                .bodyToMono(FanqieTaskList.class)
-                .doOnSuccess(taskList -> log.info("获取任务列表成功，共 {} 个任务", 
-                        taskList.getTasks() != null ? taskList.getTasks().size() : 0));
+        log.warn("直连API模式不支持下载任务管理");
+        FanqieTaskList taskList = new FanqieTaskList();
+        taskList.setTasks(new ArrayList<>());
+        return Mono.just(taskList);
     }
-    
+
     @Override
     public Mono<FanqieDownloadTask> getTaskStatus(String celeryTaskId) {
-        log.info("获取番茄小说任务状态: {}", celeryTaskId);
-        
-        return webClient.get()
-                .uri("/api/tasks/status/{celeryTaskId}", celeryTaskId)
-                .retrieve()
-                .bodyToMono(FanqieDownloadTask.class)
-                .doOnSuccess(task -> log.info("任务状态: {}", task.getStatus()));
+        log.warn("直连API模式不支持下载任务管理");
+        return Mono.error(new UnsupportedOperationException("直连API模式不支持任务状态查询"));
     }
-    
+
     @Override
     public Mono<FanqieDownloadTask> terminateTask(Long taskId) {
-        log.info("终止番茄小说下载任务: {}", taskId);
-        
-        return webClient.post()
-                .uri("/api/tasks/{taskId}/terminate", taskId)
-                .retrieve()
-                .bodyToMono(FanqieDownloadTask.class)
-                .doOnSuccess(task -> log.info("任务终止成功: taskId={}", task.getId()));
+        log.warn("直连API模式不支持下载任务管理");
+        return Mono.error(new UnsupportedOperationException("直连API模式不支持任务终止"));
     }
-    
+
     @Override
     public Mono<String> deleteTask(Long taskId) {
-        log.info("删除番茄小说任务记录: {}", taskId);
-        
-        return webClient.delete()
-                .uri("/api/tasks/{taskId}", taskId)
-                .retrieve()
-                .bodyToMono(Map.class)
-                .map(response -> (String) response.get("message"))
-                .doOnSuccess(message -> log.info("任务删除成功: {}", message));
+        log.warn("直连API模式不支持下载任务管理");
+        return Mono.error(new UnsupportedOperationException("直连API模式不支持任务删除"));
     }
-    
+
     @Override
     public Mono<FanqieDownloadTask> redownloadTask(Long taskId) {
-        log.info("重新下载番茄小说任务: {}", taskId);
-        
-        return webClient.post()
-                .uri("/api/tasks/{taskId}/redownload", taskId)
-                .retrieve()
-                .bodyToMono(FanqieDownloadTask.class)
-                .doOnSuccess(task -> log.info("重新下载任务创建成功: taskId={}", task.getId()));
+        log.warn("直连API模式不支持下载任务管理");
+        return Mono.error(new UnsupportedOperationException("直连API模式不支持重新下载"));
     }
-    
+
     @Override
+    @SuppressWarnings("unchecked")
     public Mono<FanqieChapterList> getChapterList(String novelId, Integer page, Integer perPage, String order) {
-        log.info("获取番茄小说章节列表: novelId={}, page={}, perPage={}, order={}", 
-                novelId, page, perPage, order);
-        
+        if (!configService.isEnabled()) {
+            return Mono.error(new RuntimeException("番茄小说服务未启用"));
+        }
+
+        String url = configService.getFullUrl("book") + "?book_id=" + novelId;
+        log.info("获取番茄小说章节列表: novelId={}", novelId);
+
         return webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/api/novels/{novelId}/chapters")
-                        .queryParam("page", page != null ? page : 1)
-                        .queryParam("per_page", perPage != null ? perPage : 50)
-                        .queryParam("order", order != null ? order : "asc")
-                        .build(novelId))
+                .uri(url)
                 .retrieve()
-                .bodyToMono(FanqieChapterList.class)
-                .doOnSuccess(chapterList -> log.info("获取章节列表成功，共 {} 章", 
-                        chapterList.getTotal()));
+                .bodyToMono(String.class)
+                .flatMap(response -> {
+                    try {
+                        Map<String, Object> json = objectMapper.readValue(response, Map.class);
+                        if ((Integer) json.getOrDefault("code", 0) != 200) {
+                            return Mono.error(new RuntimeException("API错误: " + json.get("message")));
+                        }
+
+                        Map<String, Object> data = (Map<String, Object>) json.get("data");
+                        List<Map<String, Object>> items = (List<Map<String, Object>>) data.getOrDefault("item_list", new ArrayList<>());
+
+                        List<FanqieChapter> chapters = new ArrayList<>();
+                        int index = 1;
+                        for (Map<String, Object> item : items) {
+                            chapters.add(FanqieChapter.builder()
+                                    .id(String.valueOf(item.get("item_id")))
+                                    .title((String) item.get("title"))
+                                    .novelId(novelId)
+                                    .index(index++)
+                                    .build());
+                        }
+
+                        // 简单分页处理
+                        int pageNum = page != null ? page : 1;
+                        int pageSize = perPage != null ? perPage : 50;
+                        int start = (pageNum - 1) * pageSize;
+                        int end = Math.min(start + pageSize, chapters.size());
+
+                        FanqieChapterList chapterList = new FanqieChapterList();
+                        chapterList.setChapters(start < chapters.size() ? chapters.subList(start, end) : new ArrayList<>());
+                        chapterList.setTotal(chapters.size());
+                        chapterList.setPage(pageNum);
+                        chapterList.setPages((int) Math.ceil((double) chapters.size() / pageSize));
+
+                        log.info("获取章节列表成功，共 {} 章", chapters.size());
+                        return Mono.just(chapterList);
+                    } catch (Exception e) {
+                        log.error("解析章节列表失败: {}", e.getMessage());
+                        return Mono.error(e);
+                    }
+                });
     }
-    
+
     @Override
+    @SuppressWarnings("unchecked")
     public Mono<FanqieChapter> getChapterContent(String novelId, String chapterId) {
+        if (!configService.isEnabled()) {
+            return Mono.error(new RuntimeException("番茄小说服务未启用"));
+        }
+
+        String url = configService.getFullUrl("content") + "?item_id=" + chapterId + "&tab=%E5%B0%8F%E8%AF%B4";
         log.info("获取番茄小说章节内容: novelId={}, chapterId={}", novelId, chapterId);
-        
+
         return webClient.get()
-                .uri("/api/novels/{novelId}/chapters/{chapterId}", novelId, chapterId)
+                .uri(url)
                 .retrieve()
-                .bodyToMono(FanqieChapter.class)
-                .doOnSuccess(chapter -> log.info("获取章节内容成功: {}", chapter.getTitle()));
+                .bodyToMono(String.class)
+                .flatMap(response -> {
+                    try {
+                        Map<String, Object> json = objectMapper.readValue(response, Map.class);
+                        if ((Integer) json.getOrDefault("code", 0) != 200) {
+                            return Mono.error(new RuntimeException("API错误: " + json.get("message")));
+                        }
+
+                        Map<String, Object> data = (Map<String, Object>) json.get("data");
+
+                        FanqieChapter chapter = new FanqieChapter();
+                        chapter.setId(chapterId);
+                        chapter.setTitle((String) data.getOrDefault("title", ""));
+                        chapter.setContent((String) data.getOrDefault("content", ""));
+                        chapter.setNovelId(novelId);
+
+                        log.info("获取章节内容成功: {}", chapter.getTitle());
+                        return Mono.just(chapter);
+                    } catch (Exception e) {
+                        log.error("解析章节内容失败: {}", e.getMessage());
+                        return Mono.error(e);
+                    }
+                });
     }
-    
+
     @Override
     public Flux<DataBuffer> downloadNovelFile(String novelId) {
-        log.info("下载番茄小说EPUB文件: {}", novelId);
-        
-        return webClient.get()
-                .uri("/api/novels/{novelId}/download", novelId)
-                .retrieve()
-                .bodyToFlux(DataBuffer.class)
-                .doOnComplete(() -> log.info("EPUB文件下载完成: {}", novelId));
+        log.warn("直连API模式不支持EPUB下载");
+        return Flux.error(new UnsupportedOperationException("直连API模式不支持EPUB下载"));
     }
-    
+
     @Override
     public Flux<DataBuffer> getNovelCover(String novelId) {
-        log.info("获取番茄小说封面: {}", novelId);
-        
-        return webClient.get()
-                .uri("/api/novels/{novelId}/cover", novelId)
-                .retrieve()
-                .bodyToFlux(DataBuffer.class)
-                .doOnComplete(() -> log.info("封面图片获取完成: {}", novelId));
+        if (!configService.isEnabled()) {
+            return Flux.error(new RuntimeException("番茄小说服务未启用"));
+        }
+
+        // 先获取详情拿到封面URL，再下载
+        return getNovelDetail(novelId)
+                .flatMapMany(detail -> {
+                    if (detail.getCoverImageUrl() == null || detail.getCoverImageUrl().isEmpty()) {
+                        return Flux.error(new RuntimeException("封面URL为空"));
+                    }
+                    return webClient.get()
+                            .uri(detail.getCoverImageUrl())
+                            .retrieve()
+                            .bodyToFlux(DataBuffer.class);
+                });
     }
 }
-
