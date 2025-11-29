@@ -110,11 +110,11 @@ public class InfrastructureConfigLoader implements ApplicationContextInitializer
         
         JsonNode storage = config.get("storage");
         
-        // 存储提供者
+        // 存储提供者 - 属性路径为 ainovel.storage.default-provider
         if (storage.has("provider")) {
             String envProvider = env.getProperty("STORAGE_PROVIDER");
             if (envProvider == null || envProvider.isEmpty()) {
-                System.setProperty("storage.default-provider", storage.get("provider").asText("local"));
+                System.setProperty("ainovel.storage.default-provider", storage.get("provider").asText("local"));
                 log.info("从配置文件加载存储提供者: {}", storage.get("provider").asText());
             }
         }
@@ -123,18 +123,19 @@ public class InfrastructureConfigLoader implements ApplicationContextInitializer
         if (storage.has("local") && storage.get("local").has("basePath")) {
             String basePath = storage.get("local").get("basePath").asText();
             if (!basePath.isEmpty()) {
-                System.setProperty("storage.local.base-path", basePath);
+                System.setProperty("ainovel.storage.local.base-path", basePath);
             }
         }
         
-        // OSS 配置
+        // OSS 配置 - 使用 ALIYUN_OSS_* 环境变量，属性路径为 ainovel.storage.aliyun.*
         if (storage.has("oss")) {
             JsonNode oss = storage.get("oss");
-            setPropertyIfNotEmpty(oss, "endpoint", "storage.aliyun.endpoint", env, "OSS_ENDPOINT");
-            setPropertyIfNotEmpty(oss, "accessKeyId", "storage.aliyun.access-key-id", env, "OSS_ACCESS_KEY_ID");
-            setPropertyIfNotEmpty(oss, "accessKeySecret", "storage.aliyun.access-key-secret", env, "OSS_ACCESS_KEY_SECRET");
-            setPropertyIfNotEmpty(oss, "bucketName", "storage.aliyun.bucket-name", env, "OSS_BUCKET_NAME");
-            setPropertyIfNotEmpty(oss, "region", "storage.aliyun.region", env, "OSS_REGION");
+            setPropertyIfNotEmpty(oss, "endpoint", "ainovel.storage.aliyun.endpoint", env, "ALIYUN_OSS_ENDPOINT");
+            setPropertyIfNotEmpty(oss, "accessKeyId", "ainovel.storage.aliyun.access-key-id", env, "ALIYUN_OSS_ACCESS_KEY_ID");
+            setPropertyIfNotEmpty(oss, "accessKeySecret", "ainovel.storage.aliyun.access-key-secret", env, "ALIYUN_OSS_ACCESS_KEY_SECRET");
+            setPropertyIfNotEmpty(oss, "bucketName", "ainovel.storage.aliyun.bucket-name", env, "ALIYUN_OSS_BUCKET_NAME");
+            setPropertyIfNotEmpty(oss, "baseUrl", "ainovel.storage.aliyun.base-url", env, "ALIYUN_OSS_BASE_URL");
+            setPropertyIfNotEmpty(oss, "region", "ainovel.storage.aliyun.region", env, "ALIYUN_OSS_REGION");
         }
     }
 
@@ -148,9 +149,9 @@ public class InfrastructureConfigLoader implements ApplicationContextInitializer
         
         JsonNode chroma = config.get("chroma");
         
-        // 启用状态
+        // 启用状态 - 使用 VECTORSTORE_CHROMA_ENABLED 环境变量
         if (chroma.has("enabled")) {
-            String envEnabled = env.getProperty("CHROMA_ENABLED");
+            String envEnabled = env.getProperty("VECTORSTORE_CHROMA_ENABLED");
             if (envEnabled == null || envEnabled.isEmpty()) {
                 System.setProperty("vectorstore.chroma.enabled", 
                     String.valueOf(chroma.get("enabled").asBoolean(false)));

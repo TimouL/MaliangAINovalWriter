@@ -78,7 +78,7 @@ docker compose up -d
 - 存储：`STORAGE_PROVIDER`（local/alioss…），以及对应供应商参数
 - 代理：`PROXY_ENABLED`、`PROXY_HOST`、`PROXY_PORT`
 - 向量库：`CHROMA_URL`（如需）
-- AI Key：`OPENAI_API_KEY`、`GEMINI_API_KEY`、`ANTHROPIC_API_KEY` 等
+- AI Key：`AI_OPENAI_API_KEY`、`AI_GEMINI_API_KEY` 等（通过后台"公共模型管理"配置更佳）
 
 > 注意：示例 env 仅用于演示，生产环境请务必替换为你自己的安全值。
 

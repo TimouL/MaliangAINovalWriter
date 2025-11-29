@@ -200,7 +200,7 @@ ainovel:
     features:
       setting-tree-generation:
         # 启动时是否初始化 SETTING_TREE_GENERATION 的提示词/策略模板
-        init-on-startup: false
+        init-on-startup: ${AINOVEL_AI_FEATURES_SETTING_TREE_GENERATION_INIT_ON_STARTUP:true}
   registration:
     quick-enabled: ${REGISTRATION_QUICK_ENABLED:true}
     email-enabled: ${REGISTRATION_EMAIL_ENABLED:false}
