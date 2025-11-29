@@ -42,7 +42,10 @@ public class FanqieNovelServiceImpl implements FanqieNovelService {
     private void initWebClient() {
         HttpClient httpClient = HttpClient.create()
                 .responseTimeout(Duration.ofSeconds(configService.getTimeout()))
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000);
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 15000)
+                .option(ChannelOption.SO_KEEPALIVE, true)
+                .compress(true)
+                .keepAlive(true);
 
         this.webClient = WebClient.builder()
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
@@ -50,6 +53,7 @@ public class FanqieNovelServiceImpl implements FanqieNovelService {
                 .defaultHeader(HttpHeaders.USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
                 .defaultHeader(HttpHeaders.ACCEPT, "application/json, text/javascript, */*; q=0.01")
                 .defaultHeader(HttpHeaders.ACCEPT_LANGUAGE, "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7")
+                .defaultHeader(HttpHeaders.CONNECTION, "keep-alive")
                 .defaultHeader("Referer", "https://fanqienovel.com/")
                 .defaultHeader("X-Requested-With", "XMLHttpRequest")
                 .build();
@@ -82,6 +86,14 @@ public class FanqieNovelServiceImpl implements FanqieNovelService {
                 .uri(fullUrl)
                 .retrieve()
                 .bodyToMono(String.class)
+                .retryWhen(reactor.util.retry.Retry.backoff(3, Duration.ofSeconds(1))
+                        .filter(throwable -> {
+                            // 只对网络连接错误重试
+                            String msg = throwable.getMessage();
+                            return msg != null && (msg.contains("Connection") || msg.contains("prematurely closed"));
+                        })
+                        .doBeforeRetry(signal -> log.warn("番茄小说API请求失败，正在重试 ({}/3): {}", 
+                                signal.totalRetries() + 1, signal.failure().getMessage())))
                 .flatMap(response -> {
                     try {
                         Map<String, Object> json = objectMapper.readValue(response, Map.class);
