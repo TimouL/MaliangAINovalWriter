@@ -6,7 +6,7 @@ class EditorSettings {
   const EditorSettings({
     // 字体相关设置 - 优化1080p显示
     this.fontSize = 14.0, // 从16.0降低到14.0，适配1080p屏幕
-    this.fontFamily = 'Noto Sans SC', // 🚀 默认中文友好字体，避免首帧方块/乱码
+    this.fontFamily = '', // 使用系统默认字体，中文自动回退到系统中文字体
     this.fontWeight = FontWeight.normal,
     this.lineSpacing = 1.4, // 从1.5降低到1.4，减少行间距
     this.letterSpacing = 0.0, // 🚀 中文写作建议稍微调整字符间距
@@ -223,7 +223,7 @@ class EditorSettings {
     
     return EditorSettings(
       fontSize: map['fontSize']?.toDouble() ?? 16.0,
-      fontFamily: map['fontFamily'] ?? 'Noto Sans SC',
+      fontFamily: map['fontFamily'] ?? '',
       fontWeight: FontWeight.values[fontWeightIndex.clamp(0, FontWeight.values.length - 1)],
       lineSpacing: map['lineSpacing']?.toDouble() ?? 1.5,
       letterSpacing: map['letterSpacing']?.toDouble() ?? 0.0,

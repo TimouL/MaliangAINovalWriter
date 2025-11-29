@@ -85,7 +85,7 @@ flutter:
   assets:
   - assets/images/
   - assets/icons/
-  # 正确声明字体
+  # 字体配置 - 仅保留 Roboto，中文使用系统字体或 Google Fonts 动态加载
   fonts:
   - family: Roboto
     fonts:
@@ -94,11 +94,6 @@ flutter:
       weight: 700
     - asset: assets/fonts/Roboto-Italic.ttf
       style: italic
-  - family: NotoSansSC
-    fonts:
-    - asset: assets/fonts/NotoSansSC-Regular.ttf
-    - asset: assets/fonts/NotoSansSC-Bold.ttf
-      weight: 700
 
 flutter_icons:
   android: "launcher_icon"
