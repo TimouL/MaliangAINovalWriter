@@ -157,7 +157,7 @@ ainovel:
 # 向量存储配置
 vectorstore:
   chroma:
-    enabled: ${CHROMA_ENABLED:false}    # 是否启用Chroma向量库，通过环境变量CHROMA_ENABLED控制
+    enabled: ${VECTORSTORE_CHROMA_ENABLED:false}
     url: ${CHROMA_URL:http://localhost:18000}
     collection: ${CHROMA_COLLECTION:ainovel}
     use-random-collection: true
@@ -187,9 +187,9 @@ ai:
     max-tokens: ${AI_MAX_TOKENS:204800}
   # 以下配置已废弃，模型 API Key 应通过后台"公共模型管理"配置
   openai:
-    api-key: ${OPENAI_API_KEY:}
+    api-key: ${AI_OPENAI_API_KEY:}
   gemini:
-    api-key: ${GEMINI_API_KEY:}
+    api-key: ${AI_GEMINI_API_KEY:}
 
 jasypt:
   encryptor:
