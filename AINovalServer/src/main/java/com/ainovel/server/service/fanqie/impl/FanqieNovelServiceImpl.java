@@ -80,7 +80,7 @@ public class FanqieNovelServiceImpl implements FanqieNovelService {
                 .queryParam("tab_type", "3")
                 .build()
                 .toUriString();
-        log.info("搜索番茄小说: {}, URL: {}", query, fullUrl);
+        log.info("搜索番茄小说: {}, apiBaseUrl={}, fullUrl={}", query, configService.getApiBaseUrl(), fullUrl);
 
         return webClient.get()
                 .uri(fullUrl)
