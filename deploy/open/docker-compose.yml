@@ -63,9 +63,10 @@ services:
       - STORAGE_PROVIDER=${STORAGE_PROVIDER:-local}
       - AINOVEL_STORAGE_TEST_ON_STARTUP=${AINOVEL_STORAGE_TEST_ON_STARTUP:-false}
       - PROXY_ENABLED=${PROXY_ENABLED:-false}
-      # 番茄小说API配置 - 必需，否则应用无法启动
-      - FANQIE_API_BASE_URL=${FANQIE_API_BASE_URL:-http://127.0.0.1:5000}
-      - FANQIE_API_PUBLIC_URL=${FANQIE_API_PUBLIC_URL:-http://127.0.0.1:5000}
+      # 番茄小说API配置 - 直连第三方API模式
+      - FANQIE_API_ENABLED=${FANQIE_API_ENABLED:-true}
+      - FANQIE_API_REMOTE_CONFIG_URL=${FANQIE_API_REMOTE_CONFIG_URL:-https://qbin.me/r/fpoash/}
+      - FANQIE_API_FALLBACK_BASE_URL=${FANQIE_API_FALLBACK_BASE_URL:-http://qkfqapi.vv9v.cn}
       - FANQIE_API_TIMEOUT=${FANQIE_API_TIMEOUT:-30}
       # 静态资源配置 - 支持主应用和管理员面板
       - SPRING_WEB_RESOURCES_STATIC_LOCATIONS=file:/app/web/,file:/app/admin_web/
