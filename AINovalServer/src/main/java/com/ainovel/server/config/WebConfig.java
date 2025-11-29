@@ -31,18 +31,74 @@ public class WebConfig implements WebFluxConfigurer {
     
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // 管理员面板静态资源：/admin/** 路径映射到 /app/admin_web/ 目录
-        // 注意：/admin 和 /admin/ 由 AdminPanelController 处理
-        registry.addResourceHandler("/admin/**")
-                .addResourceLocations("file:/app/admin_web/")
-                .setCacheControl(CacheControl.noCache())
+        // 长期缓存：WASM、字体、图标等不常变化的大文件（缓存1年）
+        CacheControl longTermCache = CacheControl.maxAge(java.time.Duration.ofDays(365)).cachePublic();
+        
+        // 中期缓存：JS、CSS 等可能更新的文件（缓存1天，需要重新验证）
+        CacheControl mediumCache = CacheControl.maxAge(java.time.Duration.ofDays(1)).cachePublic().mustRevalidate();
+        
+        // 短期缓存：HTML 等入口文件（缓存5分钟）
+        CacheControl shortCache = CacheControl.maxAge(java.time.Duration.ofMinutes(5)).cachePublic().mustRevalidate();
+        
+        // CanvasKit WASM 文件 - 长期缓存（约1.5MB，很少变化）
+        registry.addResourceHandler("/canvaskit/**")
+                .addResourceLocations("file:/app/web/canvaskit/")
+                .setCacheControl(longTermCache)
                 .resourceChain(true);
         
-        // 主应用静态资源：映射前端静态文件到 /app/web/ 目录
-        // 注意：不要拦截 /api/** 路径，避免影响API请求
+        // 字体文件 - 长期缓存
+        registry.addResourceHandler("/fonts/**")
+                .addResourceLocations("file:/app/web/fonts/", "file:/app/web/assets/fonts/")
+                .setCacheControl(longTermCache)
+                .resourceChain(true);
+        
+        registry.addResourceHandler("/assets/fonts/**")
+                .addResourceLocations("file:/app/web/assets/fonts/")
+                .setCacheControl(longTermCache)
+                .resourceChain(true);
+        
+        // 图标文件 - 长期缓存
+        registry.addResourceHandler("/icons/**")
+                .addResourceLocations("file:/app/web/icons/")
+                .setCacheControl(longTermCache)
+                .resourceChain(true);
+        
+        // 管理员面板静态资源
+        registry.addResourceHandler("/admin/canvaskit/**")
+                .addResourceLocations("file:/app/admin_web/canvaskit/")
+                .setCacheControl(longTermCache)
+                .resourceChain(true);
+        
+        registry.addResourceHandler("/admin/assets/fonts/**")
+                .addResourceLocations("file:/app/admin_web/assets/fonts/")
+                .setCacheControl(longTermCache)
+                .resourceChain(true);
+        
+        registry.addResourceHandler("/admin/**")
+                .addResourceLocations("file:/app/admin_web/")
+                .setCacheControl(mediumCache)
+                .resourceChain(true);
+        
+        // JS/CSS 文件 - 中期缓存
+        registry.addResourceHandler("/*.js", "/*.css")
+                .addResourceLocations("file:/app/web/")
+                .setCacheControl(mediumCache)
+                .resourceChain(true);
+        
+        // 其他资源文件 - 中期缓存
+        registry.addResourceHandler("/assets/**", "/shaders/**", "/packages/**")
+                .addResourceLocations("file:/app/web/assets/", "file:/app/web/shaders/", "file:/app/web/packages/")
+                .setCacheControl(mediumCache)
+                .resourceChain(true);
+        
+        // HTML 入口文件 - 短期缓存
+        registry.addResourceHandler("/", "/index.html")
+                .addResourceLocations("file:/app/web/")
+                .setCacheControl(shortCache)
+                .resourceChain(true);
+        
+        // Manifest 和配置文件 - 短期缓存
         registry.addResourceHandler(
-                "/",
-                "/index.html",
                 "/manifest.json",
                 "/AssetManifest.json",
                 "/AssetManifest.bin",
@@ -50,31 +106,16 @@ public class WebConfig implements WebFluxConfigurer {
                 "/FontManifest.json",
                 "/flutter.js",
                 "/flutter_bootstrap.js",
-                "/Icon-192.png",
-                "/Icon-512.png",
-                "/*.js",
-                "/*.json",
-                "/*.css",
-                "/favicon.ico",
-                "/favicon.png",
-                "/assets/**",
-                "/icons/**",
-                "/canvaskit/**",
-                "/shaders/**"
+                "/*.json"
         )
                 .addResourceLocations("file:/app/web/")
-                .setCacheControl(CacheControl.noCache())
+                .setCacheControl(shortCache)
                 .resourceChain(true);
-
-        // 兼容部分插件/字体直接请求 /fonts/** 或 /packages/** 的情况
-        registry.addResourceHandler("/fonts/**")
-                .addResourceLocations("file:/app/web/fonts/", "file:/app/web/assets/fonts/")
-                .setCacheControl(CacheControl.noCache())
-                .resourceChain(true);
-
-        registry.addResourceHandler("/packages/**")
-                .addResourceLocations("file:/app/web/packages/", "file:/app/web/assets/packages/")
-                .setCacheControl(CacheControl.noCache())
+        
+        // 图标和 favicon - 中期缓存
+        registry.addResourceHandler("/Icon-192.png", "/Icon-512.png", "/favicon.ico", "/favicon.png")
+                .addResourceLocations("file:/app/web/")
+                .setCacheControl(mediumCache)
                 .resourceChain(true);
     }
 }
