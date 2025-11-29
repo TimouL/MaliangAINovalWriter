@@ -66,8 +66,17 @@ public class InfrastructureStatusManager {
 
     /**
      * 从配置文件加载设置完成状态
+     * 如果环境变量 SPRING_DATA_MONGODB_URI 已设置，则认为已完成初始化
      */
     private void loadSetupStatus() {
+        // 优先检查环境变量：如果 MongoDB URI 已通过环境变量配置，跳过初始化向导
+        String mongoUri = System.getenv("SPRING_DATA_MONGODB_URI");
+        if (mongoUri != null && !mongoUri.isEmpty()) {
+            this.setupCompleted = true;
+            log.info("检测到环境变量 SPRING_DATA_MONGODB_URI，跳过初始化向导");
+            return;
+        }
+        
         try {
             File configFile = new File(CONFIG_FILE_PATH);
             if (configFile.exists()) {
