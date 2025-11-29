@@ -151,8 +151,7 @@ public class FanqieNovelServiceImpl implements FanqieNovelService {
         .onErrorResume(e -> {
             log.error("搜索番茄小说失败: {}", e.getMessage());
             return Mono.error(e);
-                    }
-                });
+        });
     }
 
     @Override
