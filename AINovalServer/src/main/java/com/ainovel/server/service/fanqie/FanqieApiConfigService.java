@@ -23,7 +23,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class FanqieApiConfigService {
 
     private static final String DEFAULT_REMOTE_CONFIG_URL = "https://qbin.me/r/fpoash/";
-    private static final String DEFAULT_API_BASE_URL = "http://qkfqapi.vv9v.cn";
+    // 使用 HTTPS 版本，避免 HuggingFace 等容器环境对 HTTP 的限制
+    private static final String DEFAULT_API_BASE_URL = "https://fq.shusan.cn";
     
     private static final Map<String, String> DEFAULT_ENDPOINTS = Map.of(
             "search", "/api/search",
@@ -91,8 +92,10 @@ public class FanqieApiConfigService {
             if (jsonResponse.containsKey("config")) {
                 Map<String, Object> config = (Map<String, Object>) jsonResponse.get("config");
                 
-                // 解析 API 基础 URL
-                this.apiBaseUrl = (String) config.getOrDefault("api_base_url", fallbackBaseUrl);
+                // 解析 API 基础 URL，优先使用 HTTPS 版本
+                String remoteApiUrl = (String) config.getOrDefault("api_base_url", fallbackBaseUrl);
+                // 将 HTTP URL 转换为 HTTPS（避免容器环境对 HTTP 的限制）
+                this.apiBaseUrl = convertToHttpsIfNeeded(remoteApiUrl);
                 
                 // 解析端点配置
                 Map<String, String> newEndpoints = new ConcurrentHashMap<>();
@@ -129,6 +132,32 @@ public class FanqieApiConfigService {
         this.lastLoadTime = LocalDateTime.now();
         this.configLoaded = true;
         log.info("使用默认配置: baseUrl={}", apiBaseUrl);
+    }
+
+    /**
+     * 将 HTTP URL 转换为 HTTPS（如果有已知的 HTTPS 映射）
+     * 避免容器环境（如 HuggingFace）对 HTTP 请求的限制
+     */
+    private String convertToHttpsIfNeeded(String url) {
+        if (url == null || url.isEmpty()) {
+            return fallbackBaseUrl;
+        }
+        // 已知的 HTTP -> HTTPS 映射
+        if (url.equals("http://qkfqapi.vv9v.cn")) {
+            log.info("将 HTTP API 地址转换为 HTTPS: {} -> https://fq.shusan.cn", url);
+            return "https://fq.shusan.cn";
+        }
+        // 如果已经是 HTTPS，直接返回
+        if (url.startsWith("https://")) {
+            return url;
+        }
+        // 其他 HTTP URL，尝试直接转换为 HTTPS
+        if (url.startsWith("http://")) {
+            String httpsUrl = url.replace("http://", "https://");
+            log.info("尝试将 HTTP API 地址转换为 HTTPS: {} -> {}", url, httpsUrl);
+            return httpsUrl;
+        }
+        return url;
     }
 
     /**
