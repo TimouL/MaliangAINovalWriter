@@ -247,23 +247,8 @@ public class KnowledgeExtractionTaskExecutor implements BackgroundTaskExecutable
             String novelId = parameters.getFanqieNovelId();
             log.info("开始获取番茄小说内容: novelId={}", novelId);
             
-            // 先尝试直接获取小说详情，如果失败则创建下载任务
+            // 直连API模式：直接获取小说详情（无需下载任务）
             return fanqieNovelService.getNovelDetail(novelId)
-                    .onErrorResume(error -> {
-                        log.warn("小说详情获取失败，可能还未下载，开始创建下载任务: novelId={}, error={}", 
-                                novelId, error.getMessage());
-                        
-                        // 创建下载任务（前10章）
-                        return fanqieNovelService.addNovelDownloadTask(novelId, 10)
-                                .flatMap(task -> {
-                                    log.info("下载任务创建成功: taskId={}, celeryTaskId={}, status={}", 
-                                            task.getId(), task.getCeleryTaskId(), task.getStatus());
-                                    
-                                    // 等待下载任务完成（轮询检查状态）
-                                    return waitForDownloadTask(task.getCeleryTaskId())
-                                            .then(fanqieNovelService.getNovelDetail(novelId));
-                                });
-                    })
                     .flatMap(detail -> {
                         // 获取前10章内容
                         return fanqieNovelService.getChapterList(novelId, 1, 10, "asc")
