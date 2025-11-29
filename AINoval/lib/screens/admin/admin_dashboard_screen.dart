@@ -27,7 +27,10 @@ import 'package:ainoval/models/analytics_data.dart';
 import 'package:ainoval/models/admin/llm_observability_models.dart';
 import 'package:ainoval/services/api_service/repositories/impl/admin_repository_impl.dart';
 import 'package:ainoval/models/admin/admin_models.dart';
+import 'package:ainoval/services/admin_auth_service.dart';
+import 'package:ainoval/services/api_service/base/api_exception.dart';
 import 'package:intl/intl.dart';
+import 'admin_login_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -114,7 +117,7 @@ class _AdminOverviewScreenState extends State<AdminOverviewScreen> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({bool isRetry = false}) async {
     setState(() {
       _loading = true;
       _error = null;
@@ -136,6 +139,16 @@ class _AdminOverviewScreenState extends State<AdminOverviewScreen> {
         _dashboardStats = dashboardStats;
       });
     } catch (e) {
+      // 处理 401 错误：尝试刷新 token
+      if (!isRetry && _is401Error(e)) {
+        final refreshed = await AdminAuthService.instance.handle401Error();
+        if (refreshed) {
+          return _loadData(isRetry: true);
+        } else {
+          _redirectToLogin();
+          return;
+        }
+      }
       setState(() {
         _error = e.toString();
       });
@@ -144,6 +157,23 @@ class _AdminOverviewScreenState extends State<AdminOverviewScreen> {
         _loading = false;
       });
     }
+  }
+
+  bool _is401Error(dynamic e) {
+    if (e is ApiException && e.statusCode == 401) return true;
+    final msg = e.toString().toLowerCase();
+    return msg.contains('401') || msg.contains('登录已过期') || msg.contains('token');
+  }
+
+  void _redirectToLogin() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('登录已过期，请重新登录'), backgroundColor: Colors.orange),
+    );
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const AdminLoginScreen()),
+      (route) => false,
+    );
   }
 
   List<ModelUsageData> _buildModelUsageFromStats(List<ModelStatistics> stats) {

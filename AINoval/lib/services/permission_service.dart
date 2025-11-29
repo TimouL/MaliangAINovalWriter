@@ -1,5 +1,4 @@
 import 'dart:convert';
-import '../models/admin/admin_auth_models.dart';
 import '../models/admin/admin_models.dart';
 import '../utils/logger.dart';
 import 'local_storage_service.dart';
@@ -8,6 +7,7 @@ import 'local_storage_service.dart';
 class PermissionService {
   static const String _tag = 'PermissionService';
   static const String _adminTokenKey = 'admin_token';
+  static const String _adminRefreshTokenKey = 'admin_refresh_token';
   static const String _adminUserKey = 'admin_user';
   
   final LocalStorageService _localStorage;
@@ -53,10 +53,13 @@ class PermissionService {
   }
 
   /// 保存管理员信息
-  Future<void> saveAdminInfo(AdminUser admin, String token) async {
+  Future<void> saveAdminInfo(AdminUser admin, String token, {String? refreshToken}) async {
     try {
       await _localStorage.setString(_adminUserKey, json.encode(admin.toJson()));
       await _localStorage.setString(_adminTokenKey, token);
+      if (refreshToken != null) {
+        await _localStorage.setString(_adminRefreshTokenKey, refreshToken);
+      }
       AppLogger.info(_tag, '管理员信息保存成功: ${admin.username}');
     } catch (e) {
       AppLogger.e(_tag, '保存管理员信息失败', e);
@@ -69,6 +72,7 @@ class PermissionService {
     try {
       await _localStorage.remove(_adminUserKey);
       await _localStorage.remove(_adminTokenKey);
+      await _localStorage.remove(_adminRefreshTokenKey);
       AppLogger.info(_tag, '管理员信息清除成功');
     } catch (e) {
       AppLogger.e(_tag, '清除管理员信息失败', e);
@@ -82,6 +86,28 @@ class PermissionService {
     } catch (e) {
       AppLogger.e(_tag, '获取管理员token失败', e);
       return null;
+    }
+  }
+
+  /// 获取管理员refreshToken
+  Future<String?> getAdminRefreshToken() async {
+    try {
+      return await _localStorage.getString(_adminRefreshTokenKey);
+    } catch (e) {
+      AppLogger.e(_tag, '获取管理员refreshToken失败', e);
+      return null;
+    }
+  }
+
+  /// 更新管理员token（刷新后使用）
+  Future<void> updateAdminTokens(String token, String refreshToken) async {
+    try {
+      await _localStorage.setString(_adminTokenKey, token);
+      await _localStorage.setString(_adminRefreshTokenKey, refreshToken);
+      AppLogger.info(_tag, '管理员token更新成功');
+    } catch (e) {
+      AppLogger.e(_tag, '更新管理员token失败', e);
+      rethrow;
     }
   }
 

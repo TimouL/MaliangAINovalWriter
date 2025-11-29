@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service/base/api_client.dart';
+import '../../services/api_service/base/api_exception.dart';
+import '../../services/admin_auth_service.dart';
+import 'admin_login_screen.dart';
 
 /// 番茄小说服务配置页面
 class FanqieConfigScreen extends StatefulWidget {
@@ -46,7 +49,7 @@ class _FanqieConfigScreenState extends State<FanqieConfigScreen> {
     super.dispose();
   }
 
-  Future<void> _loadConfig() async {
+  Future<void> _loadConfig({bool isRetry = false}) async {
     setState(() {
       _isLoading = true;
       _error = null;
@@ -73,11 +76,38 @@ class _FanqieConfigScreenState extends State<FanqieConfigScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      // 处理 401 错误：尝试刷新 token
+      if (!isRetry && _is401Error(e)) {
+        final refreshed = await AdminAuthService.instance.handle401Error();
+        if (refreshed) {
+          return _loadConfig(isRetry: true);
+        } else {
+          _redirectToLogin();
+          return;
+        }
+      }
       setState(() {
         _error = e.toString();
         _isLoading = false;
       });
     }
+  }
+
+  bool _is401Error(dynamic e) {
+    if (e is ApiException && e.statusCode == 401) return true;
+    final msg = e.toString().toLowerCase();
+    return msg.contains('401') || msg.contains('登录已过期') || msg.contains('token_expired');
+  }
+
+  void _redirectToLogin() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('登录已过期，请重新登录'), backgroundColor: Colors.orange),
+    );
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const AdminLoginScreen()),
+      (route) => false,
+    );
   }
 
   Future<void> _testConnection() async {

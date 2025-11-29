@@ -37,6 +37,30 @@ class AdminRepositoryImpl {
     }
   }
 
+  /// 刷新管理员token
+  Future<Map<String, String>?> refreshAdminToken(String refreshToken) async {
+    try {
+      AppLogger.d(_tag, '刷新管理员token');
+      final response = await _apiClient.post('/auth/refresh', data: {
+        'refreshToken': refreshToken,
+      });
+      
+      if (response is Map<String, dynamic>) {
+        final data = response.containsKey('data') ? response['data'] : response;
+        if (data is Map<String, dynamic> && data.containsKey('token')) {
+          return {
+            'token': data['token'] as String,
+            'refreshToken': data['refreshToken'] as String,
+          };
+        }
+      }
+      return null;
+    } catch (e) {
+      AppLogger.e(_tag, '刷新管理员token失败', e);
+      return null;
+    }
+  }
+
   Future<AdminDashboardStats> getDashboardStats() async {
     try {
       AppLogger.d(_tag, '获取管理员仪表板统计数据');

@@ -69,6 +69,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
             updatedAt: null,
           ),
           authResponse.token,
+          refreshToken: authResponse.refreshToken,
         );
       } catch (e) {
         // 若保存失败，仅记录日志，不阻断登录流程
