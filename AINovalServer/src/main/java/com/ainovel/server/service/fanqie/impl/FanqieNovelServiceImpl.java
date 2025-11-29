@@ -70,11 +70,16 @@ public class FanqieNovelServiceImpl implements FanqieNovelService {
             return Mono.error(new RuntimeException("番茄小说服务未启用"));
         }
 
-        String url = configService.getFullUrl("search") + "?key=" + query + "&tab_type=3";
-        log.info("搜索番茄小说: {}", query);
+        String baseUrl = configService.getFullUrl("search");
+        String fullUrl = org.springframework.web.util.UriComponentsBuilder.fromHttpUrl(baseUrl)
+                .queryParam("key", query)
+                .queryParam("tab_type", "3")
+                .build()
+                .toUriString();
+        log.info("搜索番茄小说: {}, URL: {}", query, fullUrl);
 
         return webClient.get()
-                .uri(url)
+                .uri(fullUrl)
                 .retrieve()
                 .bodyToMono(String.class)
                 .flatMap(response -> {
