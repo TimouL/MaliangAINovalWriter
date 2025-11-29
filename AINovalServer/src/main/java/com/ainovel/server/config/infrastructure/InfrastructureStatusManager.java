@@ -49,10 +49,14 @@ public class InfrastructureStatusManager {
     
     @Value("${vectorstore.chroma.enabled:false}")
     private boolean chromaEnabled;
+    
+    @Value("${spring.data.mongodb.uri:}")
+    private String mongoDbUri;
 
     public InfrastructureStatusManager(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
-        loadSetupStatus();
+        // 注意：此时 @Value 注解还未生效，先从配置文件加载
+        loadSetupStatusFromFile();
     }
 
     /**
@@ -61,22 +65,25 @@ public class InfrastructureStatusManager {
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
         log.info("应用启动完成，开始检测基础设施连接状态...");
+        // 此时 @Value 已生效，检查环境变量配置
+        checkEnvironmentConfig();
         checkAllConnections();
+    }
+    
+    /**
+     * 检查环境变量配置，如果 MongoDB URI 已配置则跳过初始化向导
+     */
+    private void checkEnvironmentConfig() {
+        if (mongoDbUri != null && !mongoDbUri.isEmpty() && !mongoDbUri.startsWith("${")) {
+            this.setupCompleted = true;
+            log.info("检测到 MongoDB URI 已配置，跳过初始化向导");
+        }
     }
 
     /**
-     * 从配置文件加载设置完成状态
-     * 如果环境变量 SPRING_DATA_MONGODB_URI 已设置，则认为已完成初始化
+     * 从配置文件加载设置完成状态（构造函数中调用，@Value 尚未生效）
      */
-    private void loadSetupStatus() {
-        // 优先检查环境变量：如果 MongoDB URI 已通过环境变量配置，跳过初始化向导
-        String mongoUri = System.getenv("SPRING_DATA_MONGODB_URI");
-        if (mongoUri != null && !mongoUri.isEmpty()) {
-            this.setupCompleted = true;
-            log.info("检测到环境变量 SPRING_DATA_MONGODB_URI，跳过初始化向导");
-            return;
-        }
-        
+    private void loadSetupStatusFromFile() {
         try {
             File configFile = new File(CONFIG_FILE_PATH);
             if (configFile.exists()) {
@@ -86,7 +93,7 @@ public class InfrastructureStatusManager {
                 }
                 log.info("加载基础设施配置状态: setupCompleted={}", setupCompleted);
             } else {
-                log.info("基础设施配置文件不存在，需要进行初始化配置");
+                log.info("基础设施配置文件不存在，将在应用启动后检查环境变量配置");
                 this.setupCompleted = false;
             }
         } catch (Exception e) {
@@ -162,11 +169,11 @@ public class InfrastructureStatusManager {
     /**
      * 判断是否处于受限模式
      * 受限模式条件：MongoDB 未连接 或 初始化向导未完成
-     * 注意：如果通过环境变量配置了 MongoDB URI，则信任配置，不进入受限模式
+     * 注意：如果通过配置了 MongoDB URI，则信任配置，不进入受限模式
      */
     public boolean isRestrictedMode() {
-        // 如果通过环境变量配置，信任配置
-        if (setupCompleted && System.getenv("SPRING_DATA_MONGODB_URI") != null) {
+        // 如果已配置 MongoDB URI，信任配置
+        if (setupCompleted && mongoDbUri != null && !mongoDbUri.isEmpty() && !mongoDbUri.startsWith("${")) {
             return false;
         }
         return mongoStatus.get() != ConnectionStatus.CONNECTED || !setupCompleted;
