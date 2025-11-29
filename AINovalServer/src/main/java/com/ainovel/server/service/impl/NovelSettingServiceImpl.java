@@ -29,6 +29,7 @@ import com.ainovel.server.service.vectorstore.VectorStore;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -46,9 +47,9 @@ public class NovelSettingServiceImpl implements NovelSettingService {
     private final EmbeddingService embeddingService;
     private final VectorStore vectorStore;
     
-    // TODO: 需要创建这个服务来提取关键词
-    // 暂时设为null以便编译通过，实际上会通过依赖注入注入
-    private final KeywordExtractionService keywordExtractionService;
+    // 关键词提取服务（可选依赖，仅当 ai.gemini.enabled=true 时可用）
+    @Autowired(required = false)
+    private KeywordExtractionService keywordExtractionService;
     
     // 默认优先级
     private static final int DEFAULT_PRIORITY = 3;
