@@ -8,18 +8,19 @@ import io.netty.channel.ChannelOption;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -64,6 +65,34 @@ public class FanqieNovelServiceImpl implements FanqieNovelService {
         log.info("番茄小说服务初始化完成（直连第三方API模式），API: {}", configService.getApiBaseUrl());
     }
 
+    /**
+     * 使用 JDK HttpClient 发送 GET 请求 (参考 Fanqie-novel-Downloader)
+     */
+    private String sendHttpGet(String url) throws Exception {
+        java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .followRedirects(java.net.http.HttpClient.Redirect.NORMAL)
+                .build();
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(Duration.ofSeconds(30))
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                .header("Accept", "application/json, text/javascript, */*; q=0.01")
+                .header("Accept-Language", "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7")
+                .header("Referer", "https://fanqienovel.com/")
+                .header("X-Requested-With", "XMLHttpRequest")
+                .header("Content-Type", "application/json")
+                .GET()
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) {
+            throw new RuntimeException("HTTP 错误: " + response.statusCode());
+        }
+        return response.body();
+    }
+
     @Override
     public Mono<String> login(String username, String password) {
         log.warn("直连API模式下login方法已废弃");
@@ -79,29 +108,15 @@ public class FanqieNovelServiceImpl implements FanqieNovelService {
 
         return Mono.fromCallable(() -> {
             String baseUrl = configService.getFullUrl("search");
-            String fullUrl = org.springframework.web.util.UriComponentsBuilder.fromHttpUrl(baseUrl)
-                    .queryParam("key", query)
-                    .queryParam("tab_type", "3")
-                    .build()
-                    .toUriString();
-            log.info("搜索番茄小说: {}, apiBaseUrl={}, fullUrl={}", query, configService.getApiBaseUrl(), fullUrl);
+            String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
+            String fullUrl = baseUrl + "?key=" + encodedQuery + "&tab_type=3";
+            log.info("搜索番茄小说: {}, fullUrl={}", query, fullUrl);
 
-            // 使用 RestTemplate 替代 WebClient，避免 Netty 兼容性问题
-            RestTemplate restTemplate = new RestTemplate();
-            HttpHeaders headers = new HttpHeaders();
-            headers.set(HttpHeaders.USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-            headers.set(HttpHeaders.ACCEPT, "application/json, text/javascript, */*; q=0.01");
-            headers.set(HttpHeaders.ACCEPT_LANGUAGE, "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7");
-            headers.set("Referer", "https://fanqienovel.com/");
-            headers.set("X-Requested-With", "XMLHttpRequest");
-
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-            ResponseEntity<String> response = restTemplate.exchange(fullUrl, HttpMethod.GET, entity, String.class);
-            String responseBody = response.getBody();
-
+            String responseBody = sendHttpGet(fullUrl);
             if (responseBody == null || responseBody.isEmpty()) {
                 throw new RuntimeException("API 响应为空");
             }
+            log.info("搜索响应长度: {}", responseBody.length());
 
             Map<String, Object> json = objectMapper.readValue(responseBody, Map.class);
             if ((Integer) json.getOrDefault("code", 0) != 200) {
@@ -177,16 +192,7 @@ public class FanqieNovelServiceImpl implements FanqieNovelService {
             String url = configService.getFullUrl("detail") + "?book_id=" + novelId;
             log.info("获取番茄小说详情: {}", novelId);
 
-            RestTemplate restTemplate = new RestTemplate();
-            HttpHeaders headers = new HttpHeaders();
-            headers.set(HttpHeaders.USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-            headers.set(HttpHeaders.ACCEPT, "application/json");
-            headers.set("Referer", "https://fanqienovel.com/");
-
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-            String responseBody = response.getBody();
-
+            String responseBody = sendHttpGet(url);
             if (responseBody == null || responseBody.isEmpty()) {
                 throw new RuntimeException("API 响应为空");
             }
@@ -266,16 +272,7 @@ public class FanqieNovelServiceImpl implements FanqieNovelService {
             String url = configService.getFullUrl("book") + "?book_id=" + novelId;
             log.info("获取番茄小说章节列表: novelId={}", novelId);
 
-            RestTemplate restTemplate = new RestTemplate();
-            HttpHeaders headers = new HttpHeaders();
-            headers.set(HttpHeaders.USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-            headers.set(HttpHeaders.ACCEPT, "application/json");
-            headers.set("Referer", "https://fanqienovel.com/");
-
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-            String responseBody = response.getBody();
-
+            String responseBody = sendHttpGet(url);
             if (responseBody == null || responseBody.isEmpty()) {
                 throw new RuntimeException("API 响应为空");
             }
@@ -341,15 +338,7 @@ public class FanqieNovelServiceImpl implements FanqieNovelService {
             String url = configService.getFullUrl("content") + "?item_id=" + chapterId + "&tab=%E5%B0%8F%E8%AF%B4";
             log.info("获取番茄小说章节内容: novelId={}, chapterId={}", novelId, chapterId);
 
-            RestTemplate restTemplate = new RestTemplate();
-            HttpHeaders headers = new HttpHeaders();
-            headers.set(HttpHeaders.USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-            headers.set(HttpHeaders.ACCEPT, "application/json");
-            headers.set("Referer", "https://fanqienovel.com/");
-
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-            String responseBody = response.getBody();
+            String responseBody = sendHttpGet(url);
 
             if (responseBody == null || responseBody.isEmpty()) {
                 throw new RuntimeException("API 响应为空");
