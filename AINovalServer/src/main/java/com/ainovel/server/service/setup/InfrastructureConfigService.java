@@ -10,6 +10,7 @@ import java.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.ainovel.server.config.infrastructure.InfrastructureStatusManager;
@@ -31,6 +32,16 @@ public class InfrastructureConfigService {
 
     private final ObjectMapper objectMapper;
     private final InfrastructureStatusManager statusManager;
+    
+    // 从环境变量/配置注入 Chroma 配置
+    @Value("${vectorstore.chroma.enabled:false}")
+    private boolean chromaEnabled;
+    
+    @Value("${vectorstore.chroma.url:}")
+    private String chromaUrl;
+    
+    @Value("${vectorstore.chroma.auth-token:}")
+    private String chromaAuthToken;
 
     @Autowired
     public InfrastructureConfigService(ObjectMapper objectMapper, InfrastructureStatusManager statusManager) {
@@ -40,19 +51,22 @@ public class InfrastructureConfigService {
 
     /**
      * 获取所有基础设施配置（脱敏）
+     * 优先使用环境变量/Spring配置，其次使用配置文件
      */
     public Mono<InfrastructureConfigDTO> getConfig() {
         return Mono.fromCallable(() -> {
             File configFile = new File(CONFIG_FILE_PATH);
+            JsonNode config;
             if (!configFile.exists()) {
-                return InfrastructureConfigDTO.empty();
+                // 配置文件不存在，使用空配置（环境变量仍会被读取）
+                config = objectMapper.createObjectNode();
+            } else {
+                try (FileInputStream fis = new FileInputStream(configFile)) {
+                    String content = new String(fis.readAllBytes(), StandardCharsets.UTF_8);
+                    config = objectMapper.readTree(content);
+                }
             }
-
-            try (FileInputStream fis = new FileInputStream(configFile)) {
-                String content = new String(fis.readAllBytes(), StandardCharsets.UTF_8);
-                JsonNode config = objectMapper.readTree(content);
-                return parseConfig(config);
-            }
+            return parseConfig(config);
         });
     }
 
@@ -86,13 +100,15 @@ public class InfrastructureConfigService {
             }
         }
 
-        // Chroma 配置
-        if (config.has("chroma")) {
-            JsonNode chroma = config.get("chroma");
-            dto.setChromaEnabled(chroma.path("enabled").asBoolean(false));
-            dto.setChromaUrl(chroma.path("url").asText(""));
-            dto.setChromaAuthToken(maskSecret(chroma.path("authToken").asText("")));
-        }
+        // Chroma 配置 - 优先使用环境变量/Spring配置，其次使用配置文件
+        dto.setChromaEnabled(this.chromaEnabled);
+        dto.setChromaUrl(this.chromaUrl != null && !this.chromaUrl.isEmpty() 
+            ? this.chromaUrl 
+            : (config.has("chroma") ? config.get("chroma").path("url").asText("") : ""));
+        String tokenValue = this.chromaAuthToken != null && !this.chromaAuthToken.isEmpty()
+            ? this.chromaAuthToken
+            : (config.has("chroma") ? config.get("chroma").path("authToken").asText("") : "");
+        dto.setChromaAuthToken(maskSecret(tokenValue));
 
         // 状态信息
         dto.setSetupCompleted(config.path("setupCompleted").asBoolean(false));
