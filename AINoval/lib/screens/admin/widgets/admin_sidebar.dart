@@ -203,6 +203,15 @@ class AdminSidebar extends StatelessWidget {
                     index: 14,
                   ),
                 ),
+                PermissionGuard.permission(
+                  PermissionService.SYSTEM_CONFIG,
+                  child: _buildMenuItem(
+                    context,
+                    icon: Icons.menu_book,
+                    title: '番茄小说',
+                    index: 15,
+                  ),
+                ),
               ],
             ),
           ),
