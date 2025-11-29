@@ -56,8 +56,7 @@ class _FanqieConfigScreenState extends State<FanqieConfigScreen> {
     });
 
     try {
-      final response = await _apiClient.get('/admin/config/fanqie');
-      final data = response.data as Map<String, dynamic>;
+      final data = await _apiClient.get('/admin/config/fanqie') as Map<String, dynamic>;
 
       setState(() {
         _enabled = data['enabled'] ?? true;
@@ -114,8 +113,7 @@ class _FanqieConfigScreenState extends State<FanqieConfigScreen> {
     setState(() => _isTesting = true);
 
     try {
-      final response = await _apiClient.post('/admin/config/fanqie/test');
-      final data = response.data as Map<String, dynamic>;
+      final data = await _apiClient.post('/admin/config/fanqie/test') as Map<String, dynamic>;
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -140,8 +138,7 @@ class _FanqieConfigScreenState extends State<FanqieConfigScreen> {
     setState(() => _isReloading = true);
 
     try {
-      final response = await _apiClient.post('/admin/config/fanqie/reload');
-      final data = response.data as Map<String, dynamic>;
+      final data = await _apiClient.post('/admin/config/fanqie/reload') as Map<String, dynamic>;
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -167,7 +164,7 @@ class _FanqieConfigScreenState extends State<FanqieConfigScreen> {
 
   Future<void> _saveConfig() async {
     try {
-      final response = await _apiClient.put(
+      final data = await _apiClient.put(
         '/admin/config/fanqie',
         data: {
           'enabled': _enabled,
@@ -175,8 +172,7 @@ class _FanqieConfigScreenState extends State<FanqieConfigScreen> {
           'fallbackBaseUrl': _fallbackBaseUrlController.text,
           'timeout': int.tryParse(_timeoutController.text) ?? 30,
         },
-      );
-      final data = response.data as Map<String, dynamic>;
+      ) as Map<String, dynamic>;
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

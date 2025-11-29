@@ -8,9 +8,13 @@ import io.netty.channel.ChannelOption;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -73,55 +77,66 @@ public class FanqieNovelServiceImpl implements FanqieNovelService {
             return Mono.error(new RuntimeException("番茄小说服务未启用"));
         }
 
-        String baseUrl = configService.getFullUrl("search");
-        String fullUrl = org.springframework.web.util.UriComponentsBuilder.fromHttpUrl(baseUrl)
-                .queryParam("key", query)
-                .queryParam("tab_type", "3")
-                .build()
-                .toUriString();
-        log.info("搜索番茄小说: {}, apiBaseUrl={}, fullUrl={}", query, configService.getApiBaseUrl(), fullUrl);
+        return Mono.fromCallable(() -> {
+            String baseUrl = configService.getFullUrl("search");
+            String fullUrl = org.springframework.web.util.UriComponentsBuilder.fromHttpUrl(baseUrl)
+                    .queryParam("key", query)
+                    .queryParam("tab_type", "3")
+                    .build()
+                    .toUriString();
+            log.info("搜索番茄小说: {}, apiBaseUrl={}, fullUrl={}", query, configService.getApiBaseUrl(), fullUrl);
 
-        return webClient.get()
-                .uri(fullUrl)
-                .retrieve()
-                .bodyToMono(String.class)
-                .retryWhen(reactor.util.retry.Retry.backoff(3, Duration.ofSeconds(1))
-                        .filter(throwable -> {
-                            // 只对网络连接错误重试
-                            String msg = throwable.getMessage();
-                            return msg != null && (msg.contains("Connection") || msg.contains("prematurely closed"));
-                        })
-                        .doBeforeRetry(signal -> log.warn("番茄小说API请求失败，正在重试 ({}/3): {}", 
-                                signal.totalRetries() + 1, signal.failure().getMessage())))
-                .flatMap(response -> {
-                    try {
-                        Map<String, Object> json = objectMapper.readValue(response, Map.class);
-                        if ((Integer) json.getOrDefault("code", 0) != 200) {
-                            return Mono.error(new RuntimeException("API错误: " + json.get("message")));
-                        }
+            // 使用 RestTemplate 替代 WebClient，避免 Netty 兼容性问题
+            RestTemplate restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            headers.set(HttpHeaders.USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+            headers.set(HttpHeaders.ACCEPT, "application/json, text/javascript, */*; q=0.01");
+            headers.set(HttpHeaders.ACCEPT_LANGUAGE, "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7");
+            headers.set("Referer", "https://fanqienovel.com/");
+            headers.set("X-Requested-With", "XMLHttpRequest");
 
-                        Map<String, Object> data = (Map<String, Object>) json.get("data");
-                        List<Map<String, Object>> items = (List<Map<String, Object>>) data.getOrDefault("data", new ArrayList<>());
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            ResponseEntity<String> response = restTemplate.exchange(fullUrl, HttpMethod.GET, entity, String.class);
+            String responseBody = response.getBody();
 
-                        List<FanqieNovelInfo> results = new ArrayList<>();
-                        for (Map<String, Object> item : items) {
-                            results.add(FanqieNovelInfo.builder()
-                                    .id(String.valueOf(item.get("book_id")))
-                                    .title((String) item.get("book_name"))
-                                    .author((String) item.get("author"))
-                                    .cover((String) item.get("thumb_url"))
-                                    .description((String) item.get("abstract"))
-                                    .category((String) item.get("category"))
-                                    .build());
-                        }
+            if (responseBody == null || responseBody.isEmpty()) {
+                throw new RuntimeException("API 响应为空");
+            }
 
-                        FanqieSearchResult result = new FanqieSearchResult();
-                        result.setResults(results);
-                        log.info("搜索成功，找到 {} 个结果", results.size());
-                        return Mono.just(result);
-                    } catch (Exception e) {
-                        log.error("解析搜索结果失败: {}", e.getMessage());
-                        return Mono.error(e);
+            Map<String, Object> json = objectMapper.readValue(responseBody, Map.class);
+            if ((Integer) json.getOrDefault("code", 0) != 200) {
+                throw new RuntimeException("API错误: " + json.get("message"));
+            }
+
+            Map<String, Object> data = (Map<String, Object>) json.get("data");
+            List<Map<String, Object>> items = (List<Map<String, Object>>) data.getOrDefault("data", new ArrayList<>());
+
+            List<FanqieNovelInfo> results = new ArrayList<>();
+            for (Map<String, Object> item : items) {
+                results.add(FanqieNovelInfo.builder()
+                        .id(String.valueOf(item.get("book_id")))
+                        .title((String) item.get("book_name"))
+                        .author((String) item.get("author"))
+                        .cover((String) item.get("thumb_url"))
+                        .description((String) item.get("abstract"))
+                        .category((String) item.get("category"))
+                        .build());
+            }
+
+            FanqieSearchResult result = new FanqieSearchResult();
+            result.setResults(results);
+            log.info("搜索成功，找到 {} 个结果", results.size());
+            return result;
+        }).retryWhen(reactor.util.retry.Retry.backoff(3, Duration.ofSeconds(1))
+                .filter(throwable -> {
+                    String msg = throwable.getMessage();
+                    return msg != null && (msg.contains("Connection") || msg.contains("timeout") || msg.contains("refused"));
+                })
+                .doBeforeRetry(signal -> log.warn("番茄小说API请求失败，正在重试 ({}/3): {}",
+                        signal.totalRetries() + 1, signal.failure().getMessage())))
+        .onErrorResume(e -> {
+            log.error("搜索番茄小说失败: {}", e.getMessage());
+            return Mono.error(e);
                     }
                 });
     }
