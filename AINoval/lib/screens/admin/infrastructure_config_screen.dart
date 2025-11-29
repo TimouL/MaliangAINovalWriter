@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service/repositories/setup_repository.dart';
+import '../../services/api_service/base/api_client.dart';
+import '../../services/api_service/base/api_exception.dart';
+import '../../services/admin_auth_service.dart';
+import 'admin_login_screen.dart';
 
 /// 基础设施配置管理页面
 class InfrastructureConfigScreen extends StatefulWidget {
@@ -11,6 +15,7 @@ class InfrastructureConfigScreen extends StatefulWidget {
 
 class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen> {
   final SetupRepository _repository = SetupRepository();
+  final ApiClient _apiClient = ApiClient();
   bool _isLoading = true;
   String? _error;
   
@@ -20,6 +25,10 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
   // 编辑状态
   bool _isEditingStorage = false;
   bool _isEditingChroma = false;
+  
+  // Token 显示状态
+  bool _showChromaToken = false;
+  String _chromaTokenValue = '';
   
   // 表单控制器
   final _localPathController = TextEditingController();
@@ -58,14 +67,25 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
     super.dispose();
   }
 
-  Future<void> _loadConfig() async {
+  Future<void> _loadConfig({bool isRetry = false}) async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
+      // 获取系统状态
       final status = await _repository.getSystemStatus();
+      
+      // 获取完整基础设施配置
+      final configResponse = await _apiClient.get('/admin/config/infrastructure');
+      final configData = configResponse is Map<String, dynamic> 
+          ? (configResponse['data'] ?? configResponse) 
+          : <String, dynamic>{};
+      
+      // 解析 Chroma 配置
+      final chromaConfig = configData['chroma'] as Map<String, dynamic>? ?? {};
+      
       setState(() {
         _config = {
           'mongoConnected': status.mongoConnected,
@@ -73,14 +93,54 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
           'chromaConnected': status.chromaConnected,
           'setupCompleted': status.setupCompleted,
         };
+        
+        // 设置 Chroma 配置
+        _chromaEnabled = chromaConfig['enabled'] ?? false;
+        _chromaUrlController.text = chromaConfig['url'] ?? '';
+        _chromaTokenValue = chromaConfig['authToken'] ?? '';
+        
         _isLoading = false;
       });
     } catch (e) {
+      // 处理 401 错误
+      if (!isRetry && _is401Error(e)) {
+        final refreshed = await AdminAuthService.instance.handle401Error();
+        if (refreshed) {
+          return _loadConfig(isRetry: true);
+        } else {
+          _redirectToLogin();
+          return;
+        }
+      }
       setState(() {
         _error = e.toString();
         _isLoading = false;
       });
     }
+  }
+
+  bool _is401Error(dynamic e) {
+    if (e is ApiException && e.statusCode == 401) return true;
+    final msg = e.toString().toLowerCase();
+    return msg.contains('401') || msg.contains('登录已过期') || msg.contains('token_expired');
+  }
+
+  void _redirectToLogin() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('登录已过期，请重新登录'), backgroundColor: Colors.orange),
+    );
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const AdminLoginScreen()),
+      (route) => false,
+    );
+  }
+
+  /// 脱敏显示 Token
+  String _maskToken(String token) {
+    if (token.isEmpty) return '未配置';
+    if (token.length <= 8) return '****';
+    return '${token.substring(0, 4)}${'*' * (token.length - 8).clamp(4, 16)}${token.substring(token.length - 4)}';
   }
 
   @override
@@ -320,6 +380,23 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
                 subtitle: Text(_chromaEnabled ? '已启用' : '已禁用'),
                 value: _chromaEnabled,
                 onChanged: null, // 只读
+              ),
+              ListTile(
+                leading: const Icon(Icons.link),
+                title: const Text('服务地址'),
+                subtitle: Text(_chromaUrlController.text.isEmpty ? '未配置' : _chromaUrlController.text),
+              ),
+              ListTile(
+                leading: const Icon(Icons.key),
+                title: const Text('认证 Token'),
+                subtitle: Text(_showChromaToken ? _chromaTokenValue : _maskToken(_chromaTokenValue)),
+                trailing: _chromaTokenValue.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(_showChromaToken ? Icons.visibility_off : Icons.visibility),
+                        onPressed: () => setState(() => _showChromaToken = !_showChromaToken),
+                        tooltip: _showChromaToken ? '隐藏' : '显示',
+                      )
+                    : null,
               ),
             ] else ...[
               SwitchListTile(
