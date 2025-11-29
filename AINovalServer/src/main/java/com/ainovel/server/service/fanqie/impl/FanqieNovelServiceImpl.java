@@ -16,10 +16,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
-import java.net.URI;
 import java.net.URLEncoder;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -66,32 +63,37 @@ public class FanqieNovelServiceImpl implements FanqieNovelService {
     }
 
     /**
-     * 使用 JDK HttpClient 发送 GET 请求 (参考 Fanqie-novel-Downloader)
+     * 使用 HttpURLConnection 发送 GET 请求 (最基础最兼容的方式)
      */
     private String sendHttpGet(String url) throws Exception {
-        java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
-                .followRedirects(java.net.http.HttpClient.Redirect.NORMAL)
-                .version(java.net.http.HttpClient.Version.HTTP_1_1)  // 强制 HTTP/1.1，避免 HTTP/2 RST_STREAM 错误
-                .build();
+        java.net.URL urlObj = new java.net.URL(url);
+        java.net.HttpURLConnection conn = (java.net.HttpURLConnection) urlObj.openConnection();
+        conn.setRequestMethod("GET");
+        conn.setConnectTimeout(10000);
+        conn.setReadTimeout(30000);
+        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+        conn.setRequestProperty("Accept", "application/json, text/javascript, */*; q=0.01");
+        conn.setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7");
+        conn.setRequestProperty("Referer", "https://fanqienovel.com/");
+        conn.setRequestProperty("X-Requested-With", "XMLHttpRequest");
+        conn.setRequestProperty("Content-Type", "application/json");
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(30))
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-                .header("Accept", "application/json, text/javascript, */*; q=0.01")
-                .header("Accept-Language", "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7")
-                .header("Referer", "https://fanqienovel.com/")
-                .header("X-Requested-With", "XMLHttpRequest")
-                .header("Content-Type", "application/json")
-                .GET()
-                .build();
-
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() != 200) {
-            throw new RuntimeException("HTTP 错误: " + response.statusCode());
+        int responseCode = conn.getResponseCode();
+        if (responseCode != 200) {
+            throw new RuntimeException("HTTP 错误: " + responseCode);
         }
-        return response.body();
+
+        try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                new java.io.InputStreamReader(conn.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
+            StringBuilder response = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                response.append(line);
+            }
+            return response.toString();
+        } finally {
+            conn.disconnect();
+        }
     }
 
     @Override
