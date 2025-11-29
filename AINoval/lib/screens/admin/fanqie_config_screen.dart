@@ -56,7 +56,7 @@ class _FanqieConfigScreenState extends State<FanqieConfigScreen> {
     });
 
     try {
-      final response = await _apiClient.get('/api/v1/admin/config/fanqie');
+      final response = await _apiClient.get('/admin/config/fanqie');
       final data = response.data as Map<String, dynamic>;
 
       setState(() {
@@ -114,7 +114,7 @@ class _FanqieConfigScreenState extends State<FanqieConfigScreen> {
     setState(() => _isTesting = true);
 
     try {
-      final response = await _apiClient.post('/api/v1/admin/config/fanqie/test');
+      final response = await _apiClient.post('/admin/config/fanqie/test');
       final data = response.data as Map<String, dynamic>;
 
       if (mounted) {
@@ -140,7 +140,7 @@ class _FanqieConfigScreenState extends State<FanqieConfigScreen> {
     setState(() => _isReloading = true);
 
     try {
-      final response = await _apiClient.post('/api/v1/admin/config/fanqie/reload');
+      final response = await _apiClient.post('/admin/config/fanqie/reload');
       final data = response.data as Map<String, dynamic>;
 
       if (mounted) {
@@ -168,7 +168,7 @@ class _FanqieConfigScreenState extends State<FanqieConfigScreen> {
   Future<void> _saveConfig() async {
     try {
       final response = await _apiClient.put(
-        '/api/v1/admin/config/fanqie',
+        '/admin/config/fanqie',
         data: {
           'enabled': _enabled,
           'remoteConfigUrl': _remoteConfigUrlController.text,

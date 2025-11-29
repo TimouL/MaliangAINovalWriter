@@ -44,7 +44,6 @@ public class FanqieNovelServiceImpl implements FanqieNovelService {
                 .responseTimeout(Duration.ofSeconds(configService.getTimeout()))
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 15000)
                 .option(ChannelOption.SO_KEEPALIVE, true)
-                .compress(true)
                 .keepAlive(true);
 
         this.webClient = WebClient.builder()
