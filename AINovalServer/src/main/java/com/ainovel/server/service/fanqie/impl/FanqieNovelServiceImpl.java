@@ -174,38 +174,48 @@ public class FanqieNovelServiceImpl implements FanqieNovelService {
             return Mono.error(new RuntimeException("番茄小说服务未启用"));
         }
 
-        String url = configService.getFullUrl("detail") + "?book_id=" + novelId;
-        log.info("获取番茄小说详情: {}", novelId);
+        return Mono.fromCallable(() -> {
+            String url = configService.getFullUrl("detail") + "?book_id=" + novelId;
+            log.info("获取番茄小说详情: {}", novelId);
 
-        return webClient.get()
-                .uri(url)
-                .retrieve()
-                .bodyToMono(String.class)
-                .flatMap(response -> {
-                    try {
-                        Map<String, Object> json = objectMapper.readValue(response, Map.class);
-                        if ((Integer) json.getOrDefault("code", 0) != 200) {
-                            return Mono.error(new RuntimeException("API错误: " + json.get("message")));
-                        }
+            RestTemplate restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            headers.set(HttpHeaders.USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+            headers.set(HttpHeaders.ACCEPT, "application/json");
+            headers.set("Referer", "https://fanqienovel.com/");
 
-                        Map<String, Object> data = (Map<String, Object>) json.get("data");
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            String responseBody = response.getBody();
 
-                        FanqieNovelDetail detail = new FanqieNovelDetail();
-                        detail.setId(String.valueOf(data.get("book_id")));
-                        detail.setTitle((String) data.get("book_name"));
-                        detail.setAuthor((String) data.get("author"));
-                        detail.setCoverImageUrl((String) data.get("thumb_url"));
-                        detail.setDescription((String) data.get("abstract"));
-                        detail.setTags((String) data.get("category"));
-                        detail.setStatus((String) data.getOrDefault("creation_status", "连载中"));
+            if (responseBody == null || responseBody.isEmpty()) {
+                throw new RuntimeException("API 响应为空");
+            }
 
-                        log.info("获取小说详情成功: {}", detail.getTitle());
-                        return Mono.just(detail);
-                    } catch (Exception e) {
-                        log.error("解析小说详情失败: {}", e.getMessage());
-                        return Mono.error(e);
-                    }
-                });
+            Map<String, Object> json = objectMapper.readValue(responseBody, Map.class);
+            if ((Integer) json.getOrDefault("code", 0) != 200) {
+                throw new RuntimeException("API错误: " + json.get("message"));
+            }
+
+            // 解析响应: data.data.xxx (参考 Fanqie-novel-Downloader)
+            Map<String, Object> level1Data = (Map<String, Object>) json.get("data");
+            Map<String, Object> bookData = level1Data;
+            if (level1Data.containsKey("data") && level1Data.get("data") instanceof Map) {
+                bookData = (Map<String, Object>) level1Data.get("data");
+            }
+
+            FanqieNovelDetail detail = new FanqieNovelDetail();
+            detail.setId(String.valueOf(bookData.get("book_id")));
+            detail.setTitle((String) bookData.get("book_name"));
+            detail.setAuthor((String) bookData.get("author"));
+            detail.setCoverImageUrl((String) bookData.get("thumb_url"));
+            detail.setDescription((String) bookData.get("abstract"));
+            detail.setTags((String) bookData.get("category"));
+            detail.setStatus((String) bookData.getOrDefault("creation_status", "连载中"));
+
+            log.info("获取小说详情成功: {}", detail.getTitle());
+            return detail;
+        });
     }
 
     @Override
@@ -253,53 +263,71 @@ public class FanqieNovelServiceImpl implements FanqieNovelService {
             return Mono.error(new RuntimeException("番茄小说服务未启用"));
         }
 
-        String url = configService.getFullUrl("book") + "?book_id=" + novelId;
-        log.info("获取番茄小说章节列表: novelId={}", novelId);
+        return Mono.fromCallable(() -> {
+            String url = configService.getFullUrl("book") + "?book_id=" + novelId;
+            log.info("获取番茄小说章节列表: novelId={}", novelId);
 
-        return webClient.get()
-                .uri(url)
-                .retrieve()
-                .bodyToMono(String.class)
-                .flatMap(response -> {
-                    try {
-                        Map<String, Object> json = objectMapper.readValue(response, Map.class);
-                        if ((Integer) json.getOrDefault("code", 0) != 200) {
-                            return Mono.error(new RuntimeException("API错误: " + json.get("message")));
-                        }
+            RestTemplate restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            headers.set(HttpHeaders.USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+            headers.set(HttpHeaders.ACCEPT, "application/json");
+            headers.set("Referer", "https://fanqienovel.com/");
 
-                        Map<String, Object> data = (Map<String, Object>) json.get("data");
-                        List<Map<String, Object>> items = (List<Map<String, Object>>) data.getOrDefault("item_list", new ArrayList<>());
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            String responseBody = response.getBody();
 
-                        List<FanqieChapter> chapters = new ArrayList<>();
-                        int index = 1;
-                        for (Map<String, Object> item : items) {
-                            chapters.add(FanqieChapter.builder()
-                                    .id(String.valueOf(item.get("item_id")))
-                                    .title((String) item.get("title"))
-                                    .novelId(novelId)
-                                    .index(index++)
-                                    .build());
-                        }
+            if (responseBody == null || responseBody.isEmpty()) {
+                throw new RuntimeException("API 响应为空");
+            }
 
-                        // 简单分页处理
-                        int pageNum = page != null ? page : 1;
-                        int pageSize = perPage != null ? perPage : 50;
-                        int start = (pageNum - 1) * pageSize;
-                        int end = Math.min(start + pageSize, chapters.size());
+            Map<String, Object> json = objectMapper.readValue(responseBody, Map.class);
+            if ((Integer) json.getOrDefault("code", 0) != 200) {
+                throw new RuntimeException("API错误: " + json.get("message"));
+            }
 
-                        FanqieChapterList chapterList = new FanqieChapterList();
-                        chapterList.setChapters(start < chapters.size() ? chapters.subList(start, end) : new ArrayList<>());
-                        chapterList.setTotal(chapters.size());
-                        chapterList.setPage(pageNum);
-                        chapterList.setPages((int) Math.ceil((double) chapters.size() / pageSize));
+            // 解析响应: data.data.chapterListWithVolume[][] (参考 Fanqie-novel-Downloader)
+            Map<String, Object> level1Data = (Map<String, Object>) json.get("data");
+            Map<String, Object> level2Data = level1Data;
+            if (level1Data.containsKey("data") && level1Data.get("data") instanceof Map) {
+                level2Data = (Map<String, Object>) level1Data.get("data");
+            }
 
-                        log.info("获取章节列表成功，共 {} 章", chapters.size());
-                        return Mono.just(chapterList);
-                    } catch (Exception e) {
-                        log.error("解析章节列表失败: {}", e.getMessage());
-                        return Mono.error(e);
+            // 从 chapterListWithVolume 展平所有章节
+            List<FanqieChapter> chapters = new ArrayList<>();
+            List<List<Map<String, Object>>> chaptersByVolume = 
+                    (List<List<Map<String, Object>>>) level2Data.getOrDefault("chapterListWithVolume", new ArrayList<>());
+            
+            int index = 1;
+            for (List<Map<String, Object>> volumeChapters : chaptersByVolume) {
+                if (volumeChapters != null) {
+                    for (Map<String, Object> item : volumeChapters) {
+                        // 注意: 字段名是 itemId (驼峰)，不是 item_id
+                        chapters.add(FanqieChapter.builder()
+                                .id(String.valueOf(item.get("itemId")))
+                                .title((String) item.get("title"))
+                                .novelId(novelId)
+                                .index(index++)
+                                .build());
                     }
-                });
+                }
+            }
+
+            // 简单分页处理
+            int pageNum = page != null ? page : 1;
+            int pageSize = perPage != null ? perPage : 50;
+            int start = (pageNum - 1) * pageSize;
+            int end = Math.min(start + pageSize, chapters.size());
+
+            FanqieChapterList chapterList = new FanqieChapterList();
+            chapterList.setChapters(start < chapters.size() ? chapters.subList(start, end) : new ArrayList<>());
+            chapterList.setTotal(chapters.size());
+            chapterList.setPage(pageNum);
+            chapterList.setPages((int) Math.ceil((double) chapters.size() / pageSize));
+
+            log.info("获取章节列表成功，共 {} 章", chapters.size());
+            return chapterList;
+        });
     }
 
     @Override
@@ -309,35 +337,42 @@ public class FanqieNovelServiceImpl implements FanqieNovelService {
             return Mono.error(new RuntimeException("番茄小说服务未启用"));
         }
 
-        String url = configService.getFullUrl("content") + "?item_id=" + chapterId + "&tab=%E5%B0%8F%E8%AF%B4";
-        log.info("获取番茄小说章节内容: novelId={}, chapterId={}", novelId, chapterId);
+        return Mono.fromCallable(() -> {
+            // 参考 Fanqie-novel-Downloader: params = {"tab": "小说", "item_id": item_id}
+            String url = configService.getFullUrl("content") + "?item_id=" + chapterId + "&tab=%E5%B0%8F%E8%AF%B4";
+            log.info("获取番茄小说章节内容: novelId={}, chapterId={}", novelId, chapterId);
 
-        return webClient.get()
-                .uri(url)
-                .retrieve()
-                .bodyToMono(String.class)
-                .flatMap(response -> {
-                    try {
-                        Map<String, Object> json = objectMapper.readValue(response, Map.class);
-                        if ((Integer) json.getOrDefault("code", 0) != 200) {
-                            return Mono.error(new RuntimeException("API错误: " + json.get("message")));
-                        }
+            RestTemplate restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            headers.set(HttpHeaders.USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+            headers.set(HttpHeaders.ACCEPT, "application/json");
+            headers.set("Referer", "https://fanqienovel.com/");
 
-                        Map<String, Object> data = (Map<String, Object>) json.get("data");
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            String responseBody = response.getBody();
 
-                        FanqieChapter chapter = new FanqieChapter();
-                        chapter.setId(chapterId);
-                        chapter.setTitle((String) data.getOrDefault("title", ""));
-                        chapter.setContent((String) data.getOrDefault("content", ""));
-                        chapter.setNovelId(novelId);
+            if (responseBody == null || responseBody.isEmpty()) {
+                throw new RuntimeException("API 响应为空");
+            }
 
-                        log.info("获取章节内容成功: {}", chapter.getTitle());
-                        return Mono.just(chapter);
-                    } catch (Exception e) {
-                        log.error("解析章节内容失败: {}", e.getMessage());
-                        return Mono.error(e);
-                    }
-                });
+            Map<String, Object> json = objectMapper.readValue(responseBody, Map.class);
+            if ((Integer) json.getOrDefault("code", 0) != 200) {
+                throw new RuntimeException("API错误: " + json.get("message"));
+            }
+
+            // 解析响应: data.content (参考 Fanqie-novel-Downloader)
+            Map<String, Object> data = (Map<String, Object>) json.get("data");
+
+            FanqieChapter chapter = new FanqieChapter();
+            chapter.setId(chapterId);
+            chapter.setTitle((String) data.getOrDefault("title", ""));
+            chapter.setContent((String) data.getOrDefault("content", ""));
+            chapter.setNovelId(novelId);
+
+            log.info("获取章节内容成功，内容长度: {}", chapter.getContent() != null ? chapter.getContent().length() : 0);
+            return chapter;
+        });
     }
 
     @Override
