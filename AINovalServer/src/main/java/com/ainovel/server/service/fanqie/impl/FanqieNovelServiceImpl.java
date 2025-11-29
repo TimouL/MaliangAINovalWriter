@@ -72,6 +72,7 @@ public class FanqieNovelServiceImpl implements FanqieNovelService {
         java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .followRedirects(java.net.http.HttpClient.Redirect.NORMAL)
+                .version(java.net.http.HttpClient.Version.HTTP_1_1)  // 强制 HTTP/1.1，避免 HTTP/2 RST_STREAM 错误
                 .build();
 
         HttpRequest request = HttpRequest.newBuilder()
