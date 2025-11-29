@@ -71,24 +71,25 @@ class AppConfig {
     }
   }
   
-  /// API基础URL
-  static String get apiBaseUrl {
+  /// 服务器基础URL（不含 /api/v1）
+  static String get serverBaseUrl {
     switch (_environment) {
       case Environment.development:
-        // 在Web平台上，直接使用localhost
         if (kIsWeb) {
-          return 'http://127.0.0.1:18080/api/v1';
-        }
-        // 在Android平台上，使用10.0.2.2来访问宿主机
-        // 在其他平台上使用127.0.0.1
-        else if (_isAndroid) {
-          return 'http://10.0.2.2:18080/api/v1';
+          return 'http://127.0.0.1:18080';
+        } else if (_isAndroid) {
+          return 'http://10.0.2.2:18080';
         } else {
-          return 'http://127.0.0.1:18080/api/v1';
+          return 'http://127.0.0.1:18080';
         }
       case Environment.production:
-        return '/api/v1';
+        return '';  // 生产环境使用相对路径
     }
+  }
+  
+  /// API基础URL（含 /api/v1）
+  static String get apiBaseUrl {
+    return '$serverBaseUrl/api/v1';
   }
   
   /// API认证令牌

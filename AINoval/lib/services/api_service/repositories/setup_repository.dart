@@ -3,8 +3,9 @@ import 'package:http/http.dart' as http;
 import '../../../config/app_config.dart';
 
 /// 配置向导 API 仓库
+/// 注意：setup 和 system 接口不在 /api/v1 下，使用 serverBaseUrl
 class SetupRepository {
-  final String baseUrl = AppConfig.apiBaseUrl;
+  final String baseUrl = AppConfig.serverBaseUrl;
 
   /// 获取系统状态
   Future<SystemStatusResponse> getSystemStatus() async {
