@@ -367,32 +367,19 @@ void main() {
   });
 }
 
-// 预加载项目使用的关键字体，降低 Web 首渲出现中文方块/乱码的概率
+// 预加载项目使用的关键字体
 Future<void> _preloadFonts() async {
   try {
-    // 预加载 Noto Sans SC 字体（修复名称匹配）
-    final noto = await rootBundle.load('assets/fonts/NotoSansSC-Regular.ttf');
-    final notoBold = await rootBundle.load('assets/fonts/NotoSansSC-Bold.ttf');
-    final notoMedium = await rootBundle.load('assets/fonts/NotoSansSC-Medium.ttf');
-    
-    final notoLoader = FontLoader('Noto Sans SC') // 修复：使用正确的字体名称
-      ..addFont(Future.value(ByteData.view(noto.buffer)))
-      ..addFont(Future.value(ByteData.view(notoBold.buffer)))
-      ..addFont(Future.value(ByteData.view(notoMedium.buffer)));
-    await notoLoader.load();
-
     // 预加载 Roboto 字体
     final roboto = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
     final robotoBold = await rootBundle.load('assets/fonts/Roboto-Bold.ttf');
-    final robotoMedium = await rootBundle.load('assets/fonts/Roboto-Medium.ttf');
     
     final robotoLoader = FontLoader('Roboto')
       ..addFont(Future.value(ByteData.view(roboto.buffer)))
-      ..addFont(Future.value(ByteData.view(robotoBold.buffer)))
-      ..addFont(Future.value(ByteData.view(robotoMedium.buffer)));
+      ..addFont(Future.value(ByteData.view(robotoBold.buffer)));
     await robotoLoader.load();
     
-    debugPrint('字体预加载完成: Noto Sans SC, Roboto');
+    debugPrint('字体预加载完成: Roboto');
   } catch (e) {
     debugPrint('字体预加载失败: $e');
   }

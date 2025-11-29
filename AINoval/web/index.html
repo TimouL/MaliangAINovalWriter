@@ -16,9 +16,7 @@
   <link rel="preload" href="main.dart.js_2.part.js" as="script">
   <link rel="preload" href="flutter.js" as="script">
   <link rel="preload" href="flutter_bootstrap.js" as="script">
-  <!-- 预加载中文与英文字体，减少首屏字体闪烁（FOUT/FOIT） -->
-  <link rel="preload" href="assets/fonts/NotoSansSC-Regular.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="preload" href="assets/fonts/NotoSansSC-Bold.ttf" as="font" type="font/ttf" crossorigin>
+  <!-- 预加载英文字体 -->
   <link rel="preload" href="assets/fonts/Roboto-Regular.ttf" as="font" type="font/ttf" crossorigin>
   
   <!-- 🌐 CDN 预连接 -->
@@ -42,20 +40,6 @@
   <style>
     /* 字体声明：使用 font-display: swap 避免因字体加载导致的文字不可见 */
     @font-face {
-      font-family: 'Noto Sans SC';
-      src: url('assets/fonts/NotoSansSC-Regular.ttf') format('truetype');
-      font-weight: 400;
-      font-style: normal;
-      font-display: swap;
-    }
-    @font-face {
-      font-family: 'Noto Sans SC';
-      src: url('assets/fonts/NotoSansSC-Bold.ttf') format('truetype');
-      font-weight: 700;
-      font-style: normal;
-      font-display: swap;
-    }
-    @font-face {
       font-family: 'Roboto';
       src: url('assets/fonts/Roboto-Regular.ttf') format('truetype');
       font-weight: 400;
@@ -66,7 +50,7 @@
     body {
       margin: 0;
       padding: 0;
-      font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', 'Heiti SC', 'WenQuanYi Micro Hei', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans CJK SC', 'Source Han Sans SC', 'Source Han Sans CN', 'Droid Sans Fallback', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
+      font-family: 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', 'Heiti SC', 'WenQuanYi Micro Hei', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans CJK SC', 'Source Han Sans SC', 'Source Han Sans CN', 'Droid Sans Fallback', sans-serif;
       background: #ffffff;
       min-height: 100vh;
       overflow: hidden;

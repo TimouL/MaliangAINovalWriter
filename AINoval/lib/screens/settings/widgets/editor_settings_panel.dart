@@ -54,10 +54,8 @@ class _EditorSettingsPanelState extends State<EditorSettingsPanel> {
               (value) => _updateSettings(_currentSettings.copyWith(fontFamily: value)),
               itemBuilder: (font) {
                 switch (font) {
-                  case 'Noto Sans SC': return 'Noto Sans SC（思源黑体）- 推荐';
+                  case '': return '系统默认字体 - 推荐';
                   case 'Roboto': return 'Roboto（英文字体）';
-                  case 'Roboto Condensed': return 'Roboto Condensed（紧凑版）';
-                  case 'Roboto SemiCondensed': return 'Roboto SemiCondensed（半紧凑版）';
                   case 'serif': return '衬线字体（中文推荐）';
                   case 'sans-serif': return '无衬线字体（中文推荐）';
                   case 'monospace': return '等宽字体（代码风格）';

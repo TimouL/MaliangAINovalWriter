@@ -255,11 +255,11 @@ class EditorSettings {
 
   /// 获取可用的字体列表
   static List<String> get availableFontFamilies => [
+    // 系统默认字体
+    '', // 系统默认（推荐）
+    
     // 本地字体 - 已在pubspec.yaml中声明
-    'Noto Sans SC', // Google Noto 简体中文字体（默认）
     'Roboto', // Google Roboto英文字体
-    'Roboto Condensed', // Roboto紧凑版
-    'Roboto SemiCondensed', // Roboto半紧凑版
     
     // 系统字体
     'serif', // 中文友好的衬线字体

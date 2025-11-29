@@ -199,7 +199,7 @@ class AgentChatThemeConfig {
   static const String fontSansLight = 'Lora'; // 对应 'Lora', serif
   
   /// 字体家族 - Sans Serif (Dark)
-  static const String fontSansDark = 'Noto Sans SC'; // 对应 Open Sans
+  static const String fontSansDark = 'sans-serif'; // 使用系统无衬线字体
   
   /// 字体家族 - Monospace
   static const String fontMono = 'Roboto Mono'; // 对应 Menlo/Space Grotesk

@@ -375,7 +375,7 @@ class WebTheme {
       return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      fontFamily: 'NotoSansSC',
+      fontFamily: null, // 使用系统默认字体
       colorScheme: ColorScheme.light(
         brightness: Brightness.light,
         primary: p.primary,
@@ -528,7 +528,7 @@ class WebTheme {
       return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      fontFamily: 'NotoSansSC',
+      fontFamily: null, // 使用系统默认字体
       colorScheme: ColorScheme.dark(
         brightness: Brightness.dark,
         primary: p.primary,
