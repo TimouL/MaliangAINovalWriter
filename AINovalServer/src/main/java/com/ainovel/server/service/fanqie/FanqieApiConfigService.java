@@ -133,32 +133,6 @@ public class FanqieApiConfigService {
     }
 
     /**
-     * 将 HTTP URL 转换为 HTTPS（如果有已知的 HTTPS 映射）
-     * 避免容器环境（如 HuggingFace）对 HTTP 请求的限制
-     */
-    private String convertToHttpsIfNeeded(String url) {
-        if (url == null || url.isEmpty()) {
-            return fallbackBaseUrl;
-        }
-        // 已知的 HTTP -> HTTPS 映射
-        if (url.equals("http://qkfqapi.vv9v.cn")) {
-            log.info("将 HTTP API 地址转换为 HTTPS: {} -> https://fq.shusan.cn", url);
-            return "https://fq.shusan.cn";
-        }
-        // 如果已经是 HTTPS，直接返回
-        if (url.startsWith("https://")) {
-            return url;
-        }
-        // 其他 HTTP URL，尝试直接转换为 HTTPS
-        if (url.startsWith("http://")) {
-            String httpsUrl = url.replace("http://", "https://");
-            log.info("尝试将 HTTP API 地址转换为 HTTPS: {} -> {}", url, httpsUrl);
-            return httpsUrl;
-        }
-        return url;
-    }
-
-    /**
      * 获取指定端点路径
      */
     public String getEndpoint(String name) {
