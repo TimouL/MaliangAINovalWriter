@@ -162,8 +162,13 @@ public class InfrastructureStatusManager {
     /**
      * 判断是否处于受限模式
      * 受限模式条件：MongoDB 未连接 或 初始化向导未完成
+     * 注意：如果通过环境变量配置了 MongoDB URI，则信任配置，不进入受限模式
      */
     public boolean isRestrictedMode() {
+        // 如果通过环境变量配置，信任配置
+        if (setupCompleted && System.getenv("SPRING_DATA_MONGODB_URI") != null) {
+            return false;
+        }
         return mongoStatus.get() != ConnectionStatus.CONNECTED || !setupCompleted;
     }
 
