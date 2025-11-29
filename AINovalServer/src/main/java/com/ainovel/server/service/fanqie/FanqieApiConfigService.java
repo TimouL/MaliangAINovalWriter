@@ -23,8 +23,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class FanqieApiConfigService {
 
     private static final String DEFAULT_REMOTE_CONFIG_URL = "https://qbin.me/r/fpoash/";
-    // 使用 HTTPS 版本，避免 HuggingFace 等容器环境对 HTTP 的限制
-    private static final String DEFAULT_API_BASE_URL = "https://fq.shusan.cn";
+    // 使用与 Python Fanqie-novel-Downloader 相同的 HTTP URL
+    private static final String DEFAULT_API_BASE_URL = "http://qkfqapi.vv9v.cn";
     
     private static final Map<String, String> DEFAULT_ENDPOINTS = Map.of(
             "search", "/api/search",
@@ -92,10 +92,8 @@ public class FanqieApiConfigService {
             if (jsonResponse.containsKey("config")) {
                 Map<String, Object> config = (Map<String, Object>) jsonResponse.get("config");
                 
-                // 解析 API 基础 URL，优先使用 HTTPS 版本
-                String remoteApiUrl = (String) config.getOrDefault("api_base_url", fallbackBaseUrl);
-                // 将 HTTP URL 转换为 HTTPS（避免容器环境对 HTTP 的限制）
-                this.apiBaseUrl = convertToHttpsIfNeeded(remoteApiUrl);
+                // 解析 API 基础 URL，直接使用远程配置的 URL（与 Python 实现保持一致）
+                this.apiBaseUrl = (String) config.getOrDefault("api_base_url", fallbackBaseUrl);
                 
                 // 解析端点配置
                 Map<String, String> newEndpoints = new ConcurrentHashMap<>();
