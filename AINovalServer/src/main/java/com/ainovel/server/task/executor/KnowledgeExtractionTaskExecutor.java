@@ -48,8 +48,8 @@ public class KnowledgeExtractionTaskExecutor implements BackgroundTaskExecutable
     private final com.ainovel.server.repository.NovelRepository novelRepository;
     private final com.ainovel.server.service.ImportService importService;
     
-    // 前端访问的公开URL（用于生成图片链接）
-    @org.springframework.beans.factory.annotation.Value("${fanqie.api.public-url}")
+    // 前端访问的公开URL（用于生成图片链接，直连API模式下封面URL已是完整路径，此配置仅作兼容保留）
+    @org.springframework.beans.factory.annotation.Value("${fanqie.api.fallback-base-url:http://qkfqapi.vv9v.cn}")
     private String fanqiePublicUrl;
     
     @Override
