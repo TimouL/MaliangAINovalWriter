@@ -108,19 +108,33 @@ public class FanqieNovelServiceImpl implements FanqieNovelService {
                 throw new RuntimeException("API错误: " + json.get("message"));
             }
 
+            // 解析响应: data.search_tabs[tab_type=3].data[].book_data[0]
             Map<String, Object> data = (Map<String, Object>) json.get("data");
-            List<Map<String, Object>> items = (List<Map<String, Object>>) data.getOrDefault("data", new ArrayList<>());
-
+            List<Map<String, Object>> searchTabs = (List<Map<String, Object>>) data.getOrDefault("search_tabs", new ArrayList<>());
+            
             List<FanqieNovelInfo> results = new ArrayList<>();
-            for (Map<String, Object> item : items) {
-                results.add(FanqieNovelInfo.builder()
-                        .id(String.valueOf(item.get("book_id")))
-                        .title((String) item.get("book_name"))
-                        .author((String) item.get("author"))
-                        .cover((String) item.get("thumb_url"))
-                        .description((String) item.get("abstract"))
-                        .category((String) item.get("category"))
-                        .build());
+            for (Map<String, Object> tab : searchTabs) {
+                Integer tabType = (Integer) tab.get("tab_type");
+                if (tabType != null && tabType == 3) {
+                    List<Map<String, Object>> tabData = (List<Map<String, Object>>) tab.get("data");
+                    if (tabData != null) {
+                        for (Map<String, Object> item : tabData) {
+                            List<Map<String, Object>> bookDataList = (List<Map<String, Object>>) item.get("book_data");
+                            if (bookDataList != null && !bookDataList.isEmpty()) {
+                                Map<String, Object> bookData = bookDataList.get(0);
+                                results.add(FanqieNovelInfo.builder()
+                                        .id(String.valueOf(bookData.get("book_id")))
+                                        .title((String) bookData.get("book_name"))
+                                        .author((String) bookData.get("author"))
+                                        .cover((String) bookData.get("thumb_url"))
+                                        .description((String) bookData.get("abstract"))
+                                        .category((String) bookData.get("category"))
+                                        .build());
+                            }
+                        }
+                    }
+                    break;
+                }
             }
 
             FanqieSearchResult result = new FanqieSearchResult();
