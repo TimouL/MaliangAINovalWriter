@@ -92,8 +92,8 @@ public class FanqieApiConfigService {
             if (jsonResponse.containsKey("config")) {
                 Map<String, Object> config = (Map<String, Object>) jsonResponse.get("config");
                 
-                // 解析 API 基础 URL，直接使用远程配置的 URL（与 Python 实现保持一致）
-                this.apiBaseUrl = (String) config.getOrDefault("api_base_url", fallbackBaseUrl);
+                // 解析 API 基础 URL，直接使用远程配置的 URL（与 Python 实现保持一致），再强制降级为 HTTP 以避免 HTTPS 兼容性问题
+                this.apiBaseUrl = enforceHttpBaseUrl((String) config.getOrDefault("api_base_url", fallbackBaseUrl));
                 
                 // 解析端点配置
                 Map<String, String> newEndpoints = new ConcurrentHashMap<>();
@@ -125,7 +125,7 @@ public class FanqieApiConfigService {
      * 使用默认配置
      */
     private void useDefaultConfig() {
-        this.apiBaseUrl = fallbackBaseUrl;
+        this.apiBaseUrl = enforceHttpBaseUrl(fallbackBaseUrl);
         this.endpoints = new ConcurrentHashMap<>(DEFAULT_ENDPOINTS);
         this.lastLoadTime = LocalDateTime.now();
         this.configLoaded = true;
@@ -144,6 +144,27 @@ public class FanqieApiConfigService {
      */
     public String getFullUrl(String endpointName) {
         return apiBaseUrl + getEndpoint(endpointName);
+    }
+
+    /**
+     * 强制使用 HTTP 基础 URL，避免容器环境下 HTTPS 连接被服务器提前关闭
+     * - 如遇到 https://fq.shusan.cn 则降级为 http://qkfqapi.vv9v.cn
+     * - 其他 https:// 开头的也统一降级为 http:// 以规避 EOF 问题
+     */
+    private String enforceHttpBaseUrl(String url) {
+        if (url == null || url.isEmpty()) {
+            return DEFAULT_API_BASE_URL;
+        }
+        if (url.startsWith("https://fq.shusan.cn")) {
+            log.warn("检测到 HTTPS 基础地址，降级为 HTTP: {} -> {}", url, DEFAULT_API_BASE_URL);
+            return DEFAULT_API_BASE_URL;
+        }
+        if (url.startsWith("https://")) {
+            String httpUrl = url.replaceFirst("https://", "http://");
+            log.warn("检测到 HTTPS 基础地址，统一降级为 HTTP: {} -> {}", url, httpUrl);
+            return httpUrl;
+        }
+        return url;
     }
 
     /**
@@ -203,7 +224,7 @@ public class FanqieApiConfigService {
                 if (update.fallbackBaseUrl() != null && !update.fallbackBaseUrl().isEmpty()) {
                     this.fallbackBaseUrl = update.fallbackBaseUrl();
                     if (!configLoaded) {
-                        this.apiBaseUrl = update.fallbackBaseUrl();
+                        this.apiBaseUrl = enforceHttpBaseUrl(update.fallbackBaseUrl());
                     }
                 }
                 if (update.timeout() != null && update.timeout() > 0) {
