@@ -48,9 +48,9 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
   String _appLogLevel = 'DEBUG';
   
   // MongoDB 连接池配置
-  int _mongoPoolMaxSize = 100;
-  int _mongoPoolMinSize = 10;
-  int _mongoPoolMaxWaitTime = 30;
+  int _mongoPoolMaxSize = 50;
+  int _mongoPoolMinSize = 5;
+  int _mongoPoolMaxWaitTime = 10;
   int _mongoPoolMaxIdleTime = 60;
   
   // 任务系统配置

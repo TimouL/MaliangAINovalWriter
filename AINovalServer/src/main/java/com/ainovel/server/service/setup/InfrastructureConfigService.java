@@ -44,13 +44,13 @@ public class InfrastructureConfigService {
     private String chromaAuthToken;
     
     // MongoDB 连接池配置（从 MongoConfig 硬编码值读取，后续可改为环境变量）
-    @Value("${spring.data.mongodb.pool.max-size:100}")
+    @Value("${spring.data.mongodb.pool.max-size:50}")
     private int mongoPoolMaxSize;
     
-    @Value("${spring.data.mongodb.pool.min-size:10}")
+    @Value("${spring.data.mongodb.pool.min-size:5}")
     private int mongoPoolMinSize;
     
-    @Value("${spring.data.mongodb.pool.max-wait-time:30}")
+    @Value("${spring.data.mongodb.pool.max-wait-time:10}")
     private int mongoPoolMaxWaitTime;
     
     @Value("${spring.data.mongodb.pool.max-idle-time:60}")
@@ -308,9 +308,9 @@ public class InfrastructureConfigService {
             dto.setStorageProvider("local");
             dto.setChromaEnabled(false);
             dto.setSetupCompleted(false);
-            dto.setMongoPoolMaxSize(100);
-            dto.setMongoPoolMinSize(10);
-            dto.setMongoPoolMaxWaitTime(30);
+            dto.setMongoPoolMaxSize(50);
+            dto.setMongoPoolMinSize(5);
+            dto.setMongoPoolMaxWaitTime(10);
             dto.setMongoPoolMaxIdleTime(60);
             dto.setTaskTransport("local");
             dto.setTaskLocalConcurrency(2000);

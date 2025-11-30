@@ -108,10 +108,11 @@ public class MongoConfig {
         ConnectionString connectionString = new ConnectionString(mongoUri);
         
         // 配置连接池参数，防止连接池耗尽
+        // 注意：MongoDB Atlas 免费版 M0 限制 500 连接，建议 maxSize 不超过 50
         ConnectionPoolSettings poolSettings = ConnectionPoolSettings.builder()
-                .maxSize(100)              // 最大连接数
-                .minSize(10)               // 最小连接数
-                .maxWaitTime(30, TimeUnit.SECONDS)    // 等待连接超时
+                .maxSize(50)               // 最大连接数（Atlas M0 限制）
+                .minSize(5)                // 最小连接数
+                .maxWaitTime(10, TimeUnit.SECONDS)    // 等待连接超时（快速失败）
                 .maxConnectionIdleTime(60, TimeUnit.SECONDS)  // 空闲连接超时
                 .maxConnectionLifeTime(300, TimeUnit.SECONDS) // 连接最大生命周期
                 .build();
@@ -122,7 +123,7 @@ public class MongoConfig {
                 .applicationName("AINovalWriter")
                 .build();
         
-        logger.info("创建MongoDB客户端，连接到: {}, 连接池: maxSize=100, minSize=10", database);
+        logger.info("创建MongoDB客户端，连接到: {}, 连接池: maxSize=50, minSize=5, maxWaitTime=10s", database);
         return MongoClients.create(settings);
     }
     

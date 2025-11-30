@@ -267,10 +267,11 @@ public class KnowledgeExtractionTaskExecutor implements BackgroundTaskExecutable
                                         return Mono.just(data);
                                     }
                                     
-                                    // 批量获取章节内容
+                                    // 批量获取章节内容 - 使用串行处理避免连接池耗尽
                                     return Flux.fromIterable(chapterList.getChapters())
                                             .take(10) // 确保只取前10章
-                                            .flatMap(chapterInfo -> {
+                                            .concatMap(chapterInfo -> {
+                                                // 串行获取章节，避免并发导致连接池压力
                                                 log.info("获取章节内容: novelId={}, chapterId={}, title={}", 
                                                         novelId, chapterInfo.getId(), chapterInfo.getTitle());
                                                 
@@ -288,7 +289,7 @@ public class KnowledgeExtractionTaskExecutor implements BackgroundTaskExecutable
                                                                     chapterInfo.getId(), error.getMessage());
                                                             return Mono.just(""); // 失败时返回空字符串
                                                         });
-                                            }, 2) // 并发2个请求
+                                            }) // 使用 concatMap 串行处理
                                             .collectList()
                                             .map(chapters -> {
                                                 String content = String.join("\n\n", chapters);
