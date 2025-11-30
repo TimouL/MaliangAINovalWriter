@@ -155,9 +155,10 @@ ainovel:
           multiplier: 2
 
 # 向量存储配置
+# 支持两种环境变量名: VECTORSTORE_CHROMA_ENABLED 或 CHROMA_ENABLED
 vectorstore:
   chroma:
-    enabled: ${VECTORSTORE_CHROMA_ENABLED:false}
+    enabled: ${VECTORSTORE_CHROMA_ENABLED:${CHROMA_ENABLED:false}}
     url: ${CHROMA_URL:http://localhost:18000}
     collection: ${CHROMA_COLLECTION:ainovel}
     use-random-collection: true

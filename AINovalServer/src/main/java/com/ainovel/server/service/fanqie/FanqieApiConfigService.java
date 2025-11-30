@@ -290,7 +290,7 @@ public class FanqieApiConfigService {
                 fallbackBaseUrl,
                 Collections.unmodifiableMap(endpoints),
                 timeout,
-                lastLoadTime,
+                formatDateTime(lastLoadTime),
                 configLoaded
         );
     }
@@ -312,7 +312,12 @@ public class FanqieApiConfigService {
             String fallbackBaseUrl,
             Map<String, String> endpoints,
             int timeout,
-            LocalDateTime lastLoadTime,
+            String lastLoadTime,
             boolean configLoaded
     ) {}
+    
+    private static String formatDateTime(LocalDateTime dt) {
+        if (dt == null) return null;
+        return dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+    }
 }

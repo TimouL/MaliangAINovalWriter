@@ -207,13 +207,15 @@ ainovel:
     phone-enabled: ${REGISTRATION_PHONE_ENABLED:false}
 
 # 向量存储配置
+# 支持两种环境变量名: VECTORSTORE_CHROMA_ENABLED 或 CHROMA_ENABLED
 vectorstore:
   chroma:
-    enabled: ${VECTORSTORE_CHROMA_ENABLED:false}
-    url: http://localhost:18000
+    enabled: ${VECTORSTORE_CHROMA_ENABLED:${CHROMA_ENABLED:false}}
+    url: ${CHROMA_URL:http://localhost:18000}
     collection: ainovel
     use-random-collection: false
     reuse-collection: true
+    auth-token: ${CHROMA_AUTH_TOKEN:}
 
 # 代理配置
 proxy:
