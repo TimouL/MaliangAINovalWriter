@@ -83,9 +83,6 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
           ? (configResponse['data'] ?? configResponse) 
           : <String, dynamic>{};
       
-      // 解析 Chroma 配置
-      final chromaConfig = configData['chroma'] as Map<String, dynamic>? ?? {};
-      
       setState(() {
         _config = {
           'mongoConnected': status.mongoConnected,
@@ -94,10 +91,11 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
           'setupCompleted': status.setupCompleted,
         };
         
-        // 设置 Chroma 配置
-        _chromaEnabled = chromaConfig['enabled'] ?? false;
-        _chromaUrlController.text = chromaConfig['url'] ?? '';
-        _chromaTokenValue = chromaConfig['authToken'] ?? '';
+        // 设置 Chroma 配置 - 支持扁平结构和嵌套结构
+        final chromaConfig = configData['chroma'] as Map<String, dynamic>?;
+        _chromaEnabled = chromaConfig?['enabled'] ?? configData['chromaEnabled'] ?? false;
+        _chromaUrlController.text = chromaConfig?['url'] ?? configData['chromaUrl'] ?? '';
+        _chromaTokenValue = chromaConfig?['authToken'] ?? configData['chromaAuthToken'] ?? '';
         
         _isLoading = false;
       });
