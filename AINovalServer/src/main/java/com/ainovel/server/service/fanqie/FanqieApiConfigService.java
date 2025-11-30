@@ -64,8 +64,15 @@ public class FanqieApiConfigService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
+    private static final String BROWSER_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
+
     public FanqieApiConfigService() {
         this.restTemplate = new RestTemplate();
+        // 添加浏览器 User-Agent 拦截器
+        this.restTemplate.getInterceptors().add((request, body, execution) -> {
+            request.getHeaders().set("User-Agent", BROWSER_USER_AGENT);
+            return execution.execute(request, body);
+        });
         this.objectMapper = new ObjectMapper();
     }
 
