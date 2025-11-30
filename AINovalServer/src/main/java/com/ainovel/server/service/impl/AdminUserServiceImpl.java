@@ -20,26 +20,32 @@ import com.ainovel.server.domain.model.User;
 import com.ainovel.server.domain.model.User.AccountStatus;
 import com.ainovel.server.repository.UserRepository;
 import com.ainovel.server.service.AdminUserService;
+import com.ainovel.server.service.SseConnectionManager;
 import com.ainovel.server.common.response.PagedResponse;
 
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
  * 管理员用户管理服务实现
  */
+@Slf4j
 @Service
 public class AdminUserServiceImpl implements AdminUserService {
     
     private final UserRepository userRepository;
     private final ReactiveMongoTemplate mongoTemplate;
     private final PasswordEncoder passwordEncoder;
+    private final SseConnectionManager sseConnectionManager;
     
     @Autowired
-    public AdminUserServiceImpl(UserRepository userRepository, ReactiveMongoTemplate mongoTemplate, PasswordEncoder passwordEncoder) {
+    public AdminUserServiceImpl(UserRepository userRepository, ReactiveMongoTemplate mongoTemplate, 
+                                PasswordEncoder passwordEncoder, SseConnectionManager sseConnectionManager) {
         this.userRepository = userRepository;
         this.mongoTemplate = mongoTemplate;
         this.passwordEncoder = passwordEncoder;
+        this.sseConnectionManager = sseConnectionManager;
     }
     
     @Override
@@ -104,6 +110,13 @@ public class AdminUserServiceImpl implements AdminUserService {
                     user.setAccountStatus(status);
                     user.setUpdatedAt(LocalDateTime.now());
                     return userRepository.save(user);
+                })
+                .doOnSuccess(user -> {
+                    // 状态变更时主动强制用户登出（如禁用、暂停等）
+                    if (status != AccountStatus.ACTIVE) {
+                        log.info("[Admin] 用户  状态变更为 {}，主动强制登出", id, status);
+                        sseConnectionManager.forceLogout(id, "ACCOUNT_STATUS_CHANGED");
+                    }
                 });
     }
     
@@ -312,6 +325,11 @@ public class AdminUserServiceImpl implements AdminUserService {
                     user.setTokenVersion(v + 1);
                     user.setUpdatedAt(LocalDateTime.now());
                     return userRepository.save(user);
+                })
+                .doOnSuccess(user -> {
+                    // tokenVersion 变更时主动强制用户登出
+                    log.info("[Admin] 用户 {} tokenVersion 已更新为 {}，主动强制登出", userId, user.getTokenVersion());
+                    sseConnectionManager.forceLogout(userId, "TOKEN_VERSION_CHANGED");
                 });
     }
 }

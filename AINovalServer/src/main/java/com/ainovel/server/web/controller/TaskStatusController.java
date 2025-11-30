@@ -21,7 +21,9 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import com.ainovel.server.task.events.TaskEventPublisher;
 import com.ainovel.server.service.JwtService;
+import com.ainovel.server.service.SseConnectionManager;
 import org.springframework.http.codec.ServerSentEvent;
+import reactor.core.publisher.Sinks;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -41,6 +43,7 @@ public class TaskStatusController {
     private final TaskSubmissionService taskSubmissionService;
     private final TaskEventPublisher taskEventPublisher;
     private final JwtService jwtService;
+    private final SseConnectionManager sseConnectionManager;
     
     // 🔧 SSE连接管理：记录每个用户的活跃连接，防止重复连接
     private final Map<String, Long> activeConnections = new java.util.concurrent.ConcurrentHashMap<>();
@@ -365,48 +368,44 @@ public class TaskStatusController {
 
         Mono<ServerSentEvent<Map<String, Object>>> completeOnce = Mono.delay(untilExpire).thenReturn(completeSse);
 
-        // 版本变更检测（数据库轮询，单机亦可）：每20秒比对一次用户tokenVersion
-        final Integer tokenVersionInTokenFinal = tokenVersionInToken;
-        Flux<ServerSentEvent<Map<String, Object>>> versionWatcher = Flux.interval(Duration.ofSeconds(20))
-            .flatMap(tick -> com.ainovel.server.config.SpringContextHolder.getBean(com.ainovel.server.service.UserService.class)
-                .findUserById(userId)
-                .flatMap(user -> {
-                    Integer currentVersion = user.getTokenVersion() == null ? 1 : user.getTokenVersion();
-                    if (tokenVersionInTokenFinal != null && !currentVersion.equals(tokenVersionInTokenFinal)) {
-                        log.info("[SSE TOKEN VERSION CHANGE] 用户 {} token版本变更（token: {}, db: {}），发送complete信号", 
-                                userId, tokenVersionInTokenFinal, currentVersion);
-                        return Mono.just(completeSse); // 版本号变更：强制complete
-                    }
-                    return Mono.empty(); // 版本号未变更，不发送事件
-                })
-            )
-            .take(1);
+        // 🔧 创建用户专属的 Sink，用于主动推送（如权限变更时强制登出）
+        // 注意：这里使用 unicast sink，每个用户只有一个活跃连接
+        Sinks.Many<ServerSentEvent<Map<String, Object>>> userSink = Sinks.many().unicast().onBackpressureBuffer();
+        final String finalUserId = userId;
+        
+        // 注册到 SSE 连接管理器
+        sseConnectionManager.registerSink(userId, userSink);
 
-        return Flux.merge(messageFlux, heartbeatFlux)
-                .takeUntilOther(Flux.merge(completeOnce, versionWatcher))
-                .concatWith(Flux.merge(completeOnce, versionWatcher).take(1))
+        // 合并：任务事件流 + 心跳流 + 用户专属推送流（用于强制登出等）
+        Flux<ServerSentEvent<Map<String, Object>>> userPushFlux = userSink.asFlux();
+
+        return Flux.merge(messageFlux, heartbeatFlux, userPushFlux)
+                .takeUntilOther(completeOnce)
                 .doOnCancel(() -> {
                     // 连接取消时清理记录和计数
-                    activeConnections.remove(userId);
-                    userConnectionCount.computeIfPresent(userId, (k, v) -> v > 1 ? v - 1 : null);
-                    int remaining = userConnectionCount.getOrDefault(userId, 0);
+                    activeConnections.remove(finalUserId);
+                    userConnectionCount.computeIfPresent(finalUserId, (k, v) -> v > 1 ? v - 1 : null);
+                    sseConnectionManager.unregisterSink(finalUserId);
+                    int remaining = userConnectionCount.getOrDefault(finalUserId, 0);
                     log.info("[SSE DISCONNECT] 用户 {} 断开SSE连接 [剩余并发: {}], 全局活跃连接数: {}", 
-                            userId, remaining, activeConnections.size());
+                            finalUserId, remaining, activeConnections.size());
                 })
                 .doOnComplete(() -> {
                     // 连接完成时清理记录和计数
-                    activeConnections.remove(userId);
-                    userConnectionCount.computeIfPresent(userId, (k, v) -> v > 1 ? v - 1 : null);
-                    int remaining = userConnectionCount.getOrDefault(userId, 0);
+                    activeConnections.remove(finalUserId);
+                    userConnectionCount.computeIfPresent(finalUserId, (k, v) -> v > 1 ? v - 1 : null);
+                    sseConnectionManager.unregisterSink(finalUserId);
+                    int remaining = userConnectionCount.getOrDefault(finalUserId, 0);
                     log.info("[SSE COMPLETE] 用户 {} SSE连接完成 [剩余并发: {}], 全局活跃连接数: {}", 
-                            userId, remaining, activeConnections.size());
+                            finalUserId, remaining, activeConnections.size());
                 })
                 .doOnError(e -> {
                     // 连接错误时清理记录和计数
-                    activeConnections.remove(userId);
-                    userConnectionCount.computeIfPresent(userId, (k, v) -> v > 1 ? v - 1 : null);
-                    int remaining = userConnectionCount.getOrDefault(userId, 0);
-                    log.error("[SSE ERROR] 用户 {} SSE连接错误 [剩余并发: {}]: {}", userId, remaining, e.getMessage());
+                    activeConnections.remove(finalUserId);
+                    userConnectionCount.computeIfPresent(finalUserId, (k, v) -> v > 1 ? v - 1 : null);
+                    sseConnectionManager.unregisterSink(finalUserId);
+                    int remaining = userConnectionCount.getOrDefault(finalUserId, 0);
+                    log.error("[SSE ERROR] 用户 {} SSE连接错误 [剩余并发: {}]: {}", finalUserId, remaining, e.getMessage());
                 })
                 .onErrorResume(e -> {
                     log.error("SSE 任务事件流错误: {}", e.getMessage(), e);
