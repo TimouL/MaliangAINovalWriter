@@ -89,7 +89,7 @@ public class FanqieApiConfigService {
         log.info("正在加载番茄小说 API 远程配置: {}", remoteConfigUrl);
         
         try {
-            String response = restTemplate.getForObject(remoteConfigUrl, String.class);
+            String response = fetchRemoteConfigWithCurl(remoteConfigUrl);
             if (response == null || response.isEmpty()) {
                 throw new RuntimeException("远程配置响应为空");
             }
@@ -179,6 +179,32 @@ public class FanqieApiConfigService {
             return httpUrl;
         }
         return url;
+    }
+
+    /**
+     * 使用 curl 命令获取远程配置，确保发送正确的浏览器请求头
+     */
+    private String fetchRemoteConfigWithCurl(String url) {
+        try {
+            ProcessBuilder pb = new ProcessBuilder(
+                "curl", "-s",
+                "-H", "User-Agent: " + BROWSER_USER_AGENT,
+                "-H", "Accept: application/json",
+                url
+            );
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            String response = new String(process.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+                log.warn("curl 命令执行失败，退出码: {}，回退到 RestTemplate", exitCode);
+                return restTemplate.getForObject(url, String.class);
+            }
+            return response;
+        } catch (Exception e) {
+            log.warn("curl 命令执行异常: {}，回退到 RestTemplate", e.getMessage());
+            return restTemplate.getForObject(url, String.class);
+        }
     }
 
     /**
