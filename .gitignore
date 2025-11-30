@@ -4,7 +4,7 @@ AINovalServer\target
 .vscode
 build
 审查报告.md
-task/
+/task/
 AGENTS.md:Zone.Identifier
 AGENTS.md
 novel-fanqie-reader/.env
@@ -16,3 +16,5 @@ UI_DESIGN_MOCKUP_V2.html
 UI_DESIGN_MOCKUP.html
 UI改造方案.md
 novel-fanqie-reader/backend/venv/
+Fanqie-novel-Downloader/
+novel-fanqie-reader/

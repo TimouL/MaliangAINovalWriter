@@ -11,6 +11,7 @@ import com.ainovel.server.task.dto.knowledge.KnowledgeExtractionParameters;
 import com.ainovel.server.task.dto.knowledge.KnowledgeExtractionProgress;
 import com.ainovel.server.task.dto.knowledge.KnowledgeExtractionResult;
 import com.ainovel.server.task.dto.knowledge.KnowledgeExtractionGroupResult;
+import com.ainovel.server.task.service.SubTaskCompletionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -47,6 +49,12 @@ public class KnowledgeExtractionTaskExecutor implements BackgroundTaskExecutable
     private final com.ainovel.server.repository.SceneRepository sceneRepository;
     private final com.ainovel.server.repository.NovelRepository novelRepository;
     private final com.ainovel.server.service.ImportService importService;
+    private final SubTaskCompletionService subTaskCompletionService;
+    
+    // 拆书任务并发限制：最多允许5个拆书任务同时执行
+    // 避免过多并发导致数据库连接和外部API压力过大
+    private static final java.util.concurrent.Semaphore EXTRACTION_SEMAPHORE = 
+            new java.util.concurrent.Semaphore(5);
     
     // 前端访问的公开URL（用于生成图片链接，直连API模式下封面URL已是完整路径，此配置仅作兼容保留）
     @org.springframework.beans.factory.annotation.Value("${fanqie.api.fallback-base-url:http://qkfqapi.vv9v.cn}")
@@ -74,6 +82,32 @@ public class KnowledgeExtractionTaskExecutor implements BackgroundTaskExecutable
         
         log.info("开始执行知识提取任务: taskId={}, importRecordId={}", 
                 taskId, parameters.getImportRecordId());
+        
+        // 使用 Semaphore 控制并发，避免过多拆书任务同时执行
+        return Mono.fromCallable(() -> {
+                    log.info("等待获取拆书任务执行许可: taskId={}, availablePermits={}", 
+                            taskId, EXTRACTION_SEMAPHORE.availablePermits());
+                    EXTRACTION_SEMAPHORE.acquire();
+                    log.info("获取拆书任务执行许可成功: taskId={}, availablePermits={}", 
+                            taskId, EXTRACTION_SEMAPHORE.availablePermits());
+                    return true;
+                })
+                .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
+                .flatMap(acquired -> doExecute(context, parameters, taskId))
+                .doFinally(signal -> {
+                    EXTRACTION_SEMAPHORE.release();
+                    log.info("释放拆书任务执行许可: taskId={}, signal={}, availablePermits={}", 
+                            taskId, signal, EXTRACTION_SEMAPHORE.availablePermits());
+                });
+    }
+    
+    /**
+     * 实际执行知识提取任务
+     */
+    private Mono<KnowledgeExtractionResult> doExecute(
+            TaskContext<KnowledgeExtractionParameters> context,
+            KnowledgeExtractionParameters parameters,
+            String taskId) {
         
         // 初始化进度
         KnowledgeExtractionProgress progress = KnowledgeExtractionProgress.builder()
@@ -580,88 +614,75 @@ public class KnowledgeExtractionTaskExecutor implements BackgroundTaskExecutable
     }
     
     /**
-     * 等待所有子任务完成
+     * 等待所有子任务完成（事件驱动模式）
+     * 
+     * 使用 SubTaskCompletionService 监听子任务完成事件，避免轮询数据库。
+     * 超时时间设置为 30 分钟。
      */
     private Mono<List<KnowledgeExtractionGroupResult>> waitForAllSubTasksComplete(
             String parentTaskId, 
             List<String> subTaskIds) {
         
-        log.info("开始等待{}个子任务完成", subTaskIds.size());
+        log.info("开始等待{}个子任务完成（事件驱动模式）: parentTaskId={}", subTaskIds.size(), parentTaskId);
         
-        return Mono.defer(() -> checkAllSubTasksStatus(subTaskIds, 0));
+        // 使用事件驱动方式等待，超时30分钟
+        return subTaskCompletionService.waitForSubTasks(parentTaskId, subTaskIds, Duration.ofMinutes(30))
+                .flatMap(subTaskResults -> {
+                    // 统计完成情况
+                    long completedCount = subTaskResults.stream()
+                            .filter(SubTaskCompletionService.SubTaskResult::isSuccess)
+                            .count();
+                    long failedCount = subTaskResults.size() - completedCount;
+                    
+                    if (failedCount > 0) {
+                        log.warn("⚠️ 部分子任务失败: 完成={}, 失败={}", completedCount, failedCount);
+                    } else {
+                        log.info("✅ 所有子任务已完成: 共{}个", completedCount);
+                    }
+                    
+                    // 转换为 KnowledgeExtractionGroupResult 列表
+                    return convertSubTaskResults(subTaskResults);
+                })
+                .onErrorResume(error -> {
+                    if (error instanceof java.util.concurrent.TimeoutException) {
+                        log.error("子任务执行超时: 等待时间超过30分钟, parentTaskId={}", parentTaskId);
+                        return Mono.error(new RuntimeException("子任务执行超时: 等待时间超过30分钟"));
+                    }
+                    log.error("等待子任务失败: parentTaskId={}, error={}", parentTaskId, error.getMessage());
+                    return Mono.error(error);
+                });
     }
     
     /**
-     * 递归检查所有子任务状态
+     * 转换子任务结果为知识提取组结果
      */
-    private Mono<List<KnowledgeExtractionGroupResult>> checkAllSubTasksStatus(
-            List<String> subTaskIds, 
-            int attemptCount) {
+    private Mono<List<KnowledgeExtractionGroupResult>> convertSubTaskResults(
+            List<SubTaskCompletionService.SubTaskResult> subTaskResults) {
         
-        final int MAX_ATTEMPTS = 360; // 最多等待120次（10分钟，每5秒一次）
-        final int POLL_INTERVAL_SECONDS = 5;
+        List<KnowledgeExtractionGroupResult> results = new ArrayList<>();
         
-        if (attemptCount >= MAX_ATTEMPTS) {
-            return Mono.error(new RuntimeException(
-                    "子任务执行超时: 等待时间超过" + (MAX_ATTEMPTS * POLL_INTERVAL_SECONDS / 60) + "分钟"));
+        for (SubTaskCompletionService.SubTaskResult subTaskResult : subTaskResults) {
+            if (subTaskResult.isSuccess() && subTaskResult.getResult() != null) {
+                try {
+                    KnowledgeExtractionGroupResult result = objectMapper.convertValue(
+                            subTaskResult.getResult(), 
+                            KnowledgeExtractionGroupResult.class);
+                    results.add(result);
+                    log.info("收集到子任务结果: groupName={}, 设定数量={}", 
+                            result.getGroupName(), 
+                            result.getSettings() != null ? result.getSettings().size() : 0);
+                } catch (Exception e) {
+                    log.error("解析子任务结果失败: taskId={}, error={}", 
+                            subTaskResult.getTaskId(), e.getMessage());
+                }
+            } else if (!subTaskResult.isSuccess()) {
+                log.warn("子任务失败，跳过结果: taskId={}, error={}", 
+                        subTaskResult.getTaskId(), subTaskResult.getErrorInfo());
+            }
         }
         
-        // 获取所有子任务的状态
-        return Flux.fromIterable(subTaskIds)
-                .flatMap(taskId -> 
-                    taskStateService.getTask(taskId)
-                            .map(task -> {
-                                Map<String, Object> taskInfo = new HashMap<>();
-                                taskInfo.put("taskId", taskId);
-                                taskInfo.put("status", task.getStatus().name());
-                                taskInfo.put("result", task.getResult());
-                                return taskInfo;
-                            })
-                            .switchIfEmpty(Mono.defer(() -> {
-                                Map<String, Object> taskInfo = new HashMap<>();
-                                taskInfo.put("taskId", taskId);
-                                taskInfo.put("status", "UNKNOWN");
-                                return Mono.just(taskInfo);
-                            }))
-                )
-                .collectList()
-                .flatMap(taskInfos -> {
-                    long completedCount = taskInfos.stream()
-                            .filter(info -> "COMPLETED".equals(info.get("status")))
-                            .count();
-                    long failedCount = taskInfos.stream()
-                            .filter(info -> "FAILED".equals(info.get("status")))
-                            .count();
-                    long runningCount = taskInfos.size() - completedCount - failedCount;
-                    
-                    log.info("子任务状态检查 [尝试 {}/{}]: 完成={}, 失败={}, 进行中={}", 
-                            attemptCount + 1, MAX_ATTEMPTS, completedCount, failedCount, runningCount);
-                    
-                    // 检查是否全部完成
-                    if (completedCount + failedCount == taskInfos.size()) {
-                        if (failedCount > 0) {
-                            log.warn("⚠️  部分子任务失败: 完成={}, 失败={}", completedCount, failedCount);
-                        } else {
-                            log.info("✅ 所有子任务已完成: 共{}个", completedCount);
-                        }
-                        
-                        // 收集所有子任务的结果
-                        return collectSubTaskResults(taskInfos);
-                    } else {
-                        // 仍有任务在运行，继续等待
-                        return Mono.delay(java.time.Duration.ofSeconds(POLL_INTERVAL_SECONDS))
-                                .flatMap(tick -> checkAllSubTasksStatus(subTaskIds, attemptCount + 1));
-                    }
-                })
-                .onErrorResume(error -> {
-                    log.error("检查子任务状态失败: error={}", error.getMessage());
-                    if (attemptCount < MAX_ATTEMPTS) {
-                        return Mono.delay(java.time.Duration.ofSeconds(POLL_INTERVAL_SECONDS))
-                                .flatMap(tick -> checkAllSubTasksStatus(subTaskIds, attemptCount + 1));
-                    } else {
-                        return Mono.error(error);
-                    }
-                });
+        log.info("共收集到{}个子任务结果", results.size());
+        return Mono.just(results);
     }
     
     /**
