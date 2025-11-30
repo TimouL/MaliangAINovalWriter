@@ -42,6 +42,26 @@ public class InfrastructureConfigService {
     
     @Value("${vectorstore.chroma.auth-token:}")
     private String chromaAuthToken;
+    
+    // MongoDB 连接池配置（从 MongoConfig 硬编码值读取，后续可改为环境变量）
+    @Value("${spring.data.mongodb.pool.max-size:100}")
+    private int mongoPoolMaxSize;
+    
+    @Value("${spring.data.mongodb.pool.min-size:10}")
+    private int mongoPoolMinSize;
+    
+    @Value("${spring.data.mongodb.pool.max-wait-time:30}")
+    private int mongoPoolMaxWaitTime;
+    
+    @Value("${spring.data.mongodb.pool.max-idle-time:60}")
+    private int mongoPoolMaxIdleTime;
+    
+    // 任务系统配置
+    @Value("${task.local.concurrency:2000}")
+    private int taskLocalConcurrency;
+    
+    @Value("${task.transport:local}")
+    private String taskTransport;
 
     @Autowired
     public InfrastructureConfigService(ObjectMapper objectMapper, InfrastructureStatusManager statusManager) {
@@ -80,8 +100,18 @@ public class InfrastructureConfigService {
         if (config.has("mongodb")) {
             JsonNode mongodb = config.get("mongodb");
             dto.setMongoUri(maskUri(mongodb.path("uri").asText("")));
-            dto.setMongoConnected(statusManager.isMongoConnected());
         }
+        dto.setMongoConnected(statusManager.isMongoConnected());
+        
+        // MongoDB 连接池配置
+        dto.setMongoPoolMaxSize(this.mongoPoolMaxSize);
+        dto.setMongoPoolMinSize(this.mongoPoolMinSize);
+        dto.setMongoPoolMaxWaitTime(this.mongoPoolMaxWaitTime);
+        dto.setMongoPoolMaxIdleTime(this.mongoPoolMaxIdleTime);
+        
+        // 任务系统配置
+        dto.setTaskTransport(this.taskTransport);
+        dto.setTaskLocalConcurrency(this.taskLocalConcurrency);
 
         // 存储配置
         if (config.has("storage")) {
@@ -251,14 +281,25 @@ public class InfrastructureConfigService {
     public static class InfrastructureConfigDTO {
         private String mongoUri;
         private boolean mongoConnected;
+        // MongoDB 连接池配置
+        private int mongoPoolMaxSize;
+        private int mongoPoolMinSize;
+        private int mongoPoolMaxWaitTime;
+        private int mongoPoolMaxIdleTime;
+        // 存储配置
         private String storageProvider;
         private String localStoragePath;
         private String ossEndpoint;
         private String ossAccessKeyId;
         private String ossBucketName;
+        // Chroma 配置
         private boolean chromaEnabled;
         private String chromaUrl;
         private String chromaAuthToken;
+        // 任务系统配置
+        private String taskTransport;
+        private int taskLocalConcurrency;
+        // 元数据
         private boolean setupCompleted;
         private String lastModified;
 
@@ -267,14 +308,29 @@ public class InfrastructureConfigService {
             dto.setStorageProvider("local");
             dto.setChromaEnabled(false);
             dto.setSetupCompleted(false);
+            dto.setMongoPoolMaxSize(100);
+            dto.setMongoPoolMinSize(10);
+            dto.setMongoPoolMaxWaitTime(30);
+            dto.setMongoPoolMaxIdleTime(60);
+            dto.setTaskTransport("local");
+            dto.setTaskLocalConcurrency(2000);
             return dto;
         }
 
-        // Getters and Setters
+        // Getters and Setters - MongoDB
         public String getMongoUri() { return mongoUri; }
         public void setMongoUri(String mongoUri) { this.mongoUri = mongoUri; }
         public boolean isMongoConnected() { return mongoConnected; }
         public void setMongoConnected(boolean mongoConnected) { this.mongoConnected = mongoConnected; }
+        public int getMongoPoolMaxSize() { return mongoPoolMaxSize; }
+        public void setMongoPoolMaxSize(int mongoPoolMaxSize) { this.mongoPoolMaxSize = mongoPoolMaxSize; }
+        public int getMongoPoolMinSize() { return mongoPoolMinSize; }
+        public void setMongoPoolMinSize(int mongoPoolMinSize) { this.mongoPoolMinSize = mongoPoolMinSize; }
+        public int getMongoPoolMaxWaitTime() { return mongoPoolMaxWaitTime; }
+        public void setMongoPoolMaxWaitTime(int mongoPoolMaxWaitTime) { this.mongoPoolMaxWaitTime = mongoPoolMaxWaitTime; }
+        public int getMongoPoolMaxIdleTime() { return mongoPoolMaxIdleTime; }
+        public void setMongoPoolMaxIdleTime(int mongoPoolMaxIdleTime) { this.mongoPoolMaxIdleTime = mongoPoolMaxIdleTime; }
+        // Getters and Setters - Storage
         public String getStorageProvider() { return storageProvider; }
         public void setStorageProvider(String storageProvider) { this.storageProvider = storageProvider; }
         public String getLocalStoragePath() { return localStoragePath; }
@@ -285,12 +341,19 @@ public class InfrastructureConfigService {
         public void setOssAccessKeyId(String ossAccessKeyId) { this.ossAccessKeyId = ossAccessKeyId; }
         public String getOssBucketName() { return ossBucketName; }
         public void setOssBucketName(String ossBucketName) { this.ossBucketName = ossBucketName; }
+        // Getters and Setters - Chroma
         public boolean isChromaEnabled() { return chromaEnabled; }
         public void setChromaEnabled(boolean chromaEnabled) { this.chromaEnabled = chromaEnabled; }
         public String getChromaUrl() { return chromaUrl; }
         public void setChromaUrl(String chromaUrl) { this.chromaUrl = chromaUrl; }
         public String getChromaAuthToken() { return chromaAuthToken; }
         public void setChromaAuthToken(String chromaAuthToken) { this.chromaAuthToken = chromaAuthToken; }
+        // Getters and Setters - Task System
+        public String getTaskTransport() { return taskTransport; }
+        public void setTaskTransport(String taskTransport) { this.taskTransport = taskTransport; }
+        public int getTaskLocalConcurrency() { return taskLocalConcurrency; }
+        public void setTaskLocalConcurrency(int taskLocalConcurrency) { this.taskLocalConcurrency = taskLocalConcurrency; }
+        // Getters and Setters - Metadata
         public boolean isSetupCompleted() { return setupCompleted; }
         public void setSetupCompleted(boolean setupCompleted) { this.setupCompleted = setupCompleted; }
         public String getLastModified() { return lastModified; }

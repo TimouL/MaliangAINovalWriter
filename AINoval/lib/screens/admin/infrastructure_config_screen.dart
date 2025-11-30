@@ -47,6 +47,16 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
   String _rootLogLevel = 'INFO';
   String _appLogLevel = 'DEBUG';
   
+  // MongoDB 连接池配置
+  int _mongoPoolMaxSize = 100;
+  int _mongoPoolMinSize = 10;
+  int _mongoPoolMaxWaitTime = 30;
+  int _mongoPoolMaxIdleTime = 60;
+  
+  // 任务系统配置
+  String _taskTransport = 'local';
+  int _taskLocalConcurrency = 2000;
+  
   static const List<String> _logLevels = ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR'];
 
   @override
@@ -96,6 +106,16 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
         _chromaEnabled = chromaConfig?['enabled'] ?? configData['chromaEnabled'] ?? false;
         _chromaUrlController.text = chromaConfig?['url'] ?? configData['chromaUrl'] ?? '';
         _chromaTokenValue = chromaConfig?['authToken'] ?? configData['chromaAuthToken'] ?? '';
+        
+        // 设置 MongoDB 连接池配置
+        _mongoPoolMaxSize = configData['mongoPoolMaxSize'] ?? 100;
+        _mongoPoolMinSize = configData['mongoPoolMinSize'] ?? 10;
+        _mongoPoolMaxWaitTime = configData['mongoPoolMaxWaitTime'] ?? 30;
+        _mongoPoolMaxIdleTime = configData['mongoPoolMaxIdleTime'] ?? 60;
+        
+        // 设置任务系统配置
+        _taskTransport = configData['taskTransport'] ?? 'local';
+        _taskLocalConcurrency = configData['taskLocalConcurrency'] ?? 2000;
         
         _isLoading = false;
       });
@@ -170,6 +190,8 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
         children: [
           _buildMongoSection(),
           const SizedBox(height: 24),
+          _buildTaskSection(),
+          const SizedBox(height: 24),
           _buildStorageSection(),
           const SizedBox(height: 24),
           _buildChromaSection(),
@@ -199,6 +221,12 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
                   'MongoDB 数据库',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
+                const SizedBox(width: 8),
+                Chip(
+                  label: const Text('需重启生效'),
+                  backgroundColor: Colors.orange.shade100,
+                  labelStyle: const TextStyle(fontSize: 10),
+                ),
               ],
             ),
             const Divider(),
@@ -211,15 +239,140 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
                 backgroundColor: connected ? Colors.green.shade100 : Colors.red.shade100,
               ),
             ),
+            // 连接池配置
+            ExpansionTile(
+              leading: const Icon(Icons.pool),
+              title: const Text('连接池配置'),
+              subtitle: Text('最大 $_mongoPoolMaxSize / 最小 $_mongoPoolMinSize'),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Column(
+                    children: [
+                      _buildPoolConfigRow('最大连接数', '$_mongoPoolMaxSize', 
+                        '同时允许的最大数据库连接数'),
+                      _buildPoolConfigRow('最小连接数', '$_mongoPoolMinSize', 
+                        '连接池维护的最小空闲连接数'),
+                      _buildPoolConfigRow('等待超时', '$_mongoPoolMaxWaitTime 秒', 
+                        '获取连接的最大等待时间'),
+                      _buildPoolConfigRow('空闲超时', '$_mongoPoolMaxIdleTime 秒', 
+                        '空闲连接自动关闭时间'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
             Text(
-              '注意：MongoDB 连接配置修改需要重启应用后生效',
+              '提示：连接池配置可通过环境变量修改，如 SPRING_DATA_MONGODB_POOL_MAX_SIZE',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildPoolConfigRow(String label, String value, String tooltip) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Text(label, style: const TextStyle(fontSize: 14)),
+              const SizedBox(width: 4),
+              Tooltip(
+                message: tooltip,
+                child: Icon(Icons.info_outline, size: 16, color: Colors.grey.shade500),
+              ),
+            ],
+          ),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTaskSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.settings_applications,
+                  color: Colors.teal.shade700,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  '任务系统',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 8),
+                Chip(
+                  label: const Text('需重启生效'),
+                  backgroundColor: Colors.orange.shade100,
+                  labelStyle: const TextStyle(fontSize: 10),
+                ),
+              ],
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.swap_horiz),
+              title: const Text('传输模式'),
+              subtitle: Text(_taskTransport == 'local' ? '本地模式' : 'RabbitMQ 分布式'),
+              trailing: Chip(
+                label: Text(_taskTransport == 'local' ? '单机' : '集群'),
+                backgroundColor: _taskTransport == 'local' 
+                    ? Colors.blue.shade100 
+                    : Colors.purple.shade100,
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.speed),
+              title: const Text('并发数'),
+              subtitle: Text('最大 $_taskLocalConcurrency 个并发任务'),
+              trailing: _getConcurrencyChip(),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '说明：任务系统用于处理拆书、知识提取等后台任务。\n'
+              '并发数影响同时执行的任务数量，建议根据服务器配置调整。',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '提示：可通过环境变量 TASK_LOCAL_CONCURRENCY 修改并发数',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _getConcurrencyChip() {
+    String label;
+    Color color;
+    if (_taskLocalConcurrency <= 100) {
+      label = '低';
+      color = Colors.green.shade100;
+    } else if (_taskLocalConcurrency <= 500) {
+      label = '中';
+      color = Colors.blue.shade100;
+    } else if (_taskLocalConcurrency <= 1000) {
+      label = '高';
+      color = Colors.orange.shade100;
+    } else {
+      label = '极高';
+      color = Colors.red.shade100;
+    }
+    return Chip(label: Text(label), backgroundColor: color);
   }
 
   Widget _buildStorageSection() {
