@@ -86,14 +86,21 @@ public class FanqieApiConfigService {
             if (response == null || response.isEmpty()) {
                 throw new RuntimeException("远程配置响应为空");
             }
+            
+            // 打印远程配置原始响应，用于排查问题
+            log.info("远程配置原始响应: {}", response);
 
             Map<String, Object> jsonResponse = objectMapper.readValue(response, Map.class);
             
             if (jsonResponse.containsKey("config")) {
                 Map<String, Object> config = (Map<String, Object>) jsonResponse.get("config");
                 
+                // 打印解析出的 api_base_url 原始值
+                String rawApiBaseUrl = (String) config.getOrDefault("api_base_url", fallbackBaseUrl);
+                log.info("远程配置 api_base_url 原始值: {}", rawApiBaseUrl);
+                
                 // 解析 API 基础 URL，直接使用远程配置的 URL（与 Python 实现保持一致），再强制降级为 HTTP 以避免 HTTPS 兼容性问题
-                this.apiBaseUrl = enforceHttpBaseUrl((String) config.getOrDefault("api_base_url", fallbackBaseUrl));
+                this.apiBaseUrl = enforceHttpBaseUrl(rawApiBaseUrl);
                 
                 // 解析端点配置
                 Map<String, String> newEndpoints = new ConcurrentHashMap<>();
