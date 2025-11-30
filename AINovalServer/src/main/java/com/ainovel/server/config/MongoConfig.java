@@ -21,8 +21,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
+import com.mongodb.connection.ConnectionPoolSettings;
 import com.mongodb.reactivestreams.client.MongoClient;
 import com.mongodb.reactivestreams.client.MongoClients;
+
+import java.util.concurrent.TimeUnit;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.convert.ReadingConverter;
 import org.springframework.data.convert.WritingConverter;
@@ -97,19 +100,29 @@ public class MongoConfig {
     }
     
     /**
-     * 创建MongoDB客户端，添加性能监控
+     * 创建MongoDB客户端，添加性能监控和连接池配置
      * @return MongoDB客户端
      */
     @Bean
     public MongoClient reactiveMongoClient() {
         ConnectionString connectionString = new ConnectionString(mongoUri);
         
+        // 配置连接池参数，防止连接池耗尽
+        ConnectionPoolSettings poolSettings = ConnectionPoolSettings.builder()
+                .maxSize(100)              // 最大连接数
+                .minSize(10)               // 最小连接数
+                .maxWaitTime(30, TimeUnit.SECONDS)    // 等待连接超时
+                .maxConnectionIdleTime(60, TimeUnit.SECONDS)  // 空闲连接超时
+                .maxConnectionLifeTime(300, TimeUnit.SECONDS) // 连接最大生命周期
+                .build();
+        
         MongoClientSettings settings = MongoClientSettings.builder()
                 .applyConnectionString(connectionString)
+                .applyToConnectionPoolSettings(builder -> builder.applySettings(poolSettings))
                 .applicationName("AINovalWriter")
                 .build();
         
-        logger.info("创建MongoDB客户端，连接到: {}", database);
+        logger.info("创建MongoDB客户端，连接到: {}, 连接池: maxSize=100, minSize=10", database);
         return MongoClients.create(settings);
     }
     
