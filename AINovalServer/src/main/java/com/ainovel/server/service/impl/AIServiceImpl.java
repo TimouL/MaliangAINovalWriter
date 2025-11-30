@@ -422,45 +422,49 @@ public class AIServiceImpl implements AIService {
             });
     }
 
-    // 已删除旧直连入口，请使用 createProviderByConfigId
+    // 已删除旧直连入口，请使用 createProviderByConfigIdAsync（响应式）或 createProviderByConfigId（同步）
 
     @Override
+    @Deprecated
     public AIModelProvider createProviderByConfigId(String userId, String configId) {
-        try {
-            // 优先用户私有配置
-            com.ainovel.server.domain.model.UserAIModelConfig userCfg = userAIModelConfigService
-                    .getConfigurationById(userId, configId)
-                    .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
-                    .blockOptional()
-                    .orElse(null);
-            if (userCfg != null && Boolean.TRUE.equals(userCfg.getIsValidated())) {
-                String apiKey = null;
-                try {
-                    apiKey = encryptor.decrypt(userCfg.getApiKey());
-                } catch (Exception ignore) {}
-                AIModelProvider provider = providerFactory.createProvider(userCfg.getProvider(), userCfg.getModelName(), apiKey, userCfg.getApiEndpoint());
-                return wrapWithBilling(provider);
-            }
-            log.info("尝试使用公共模型解析 :{} ", configId);
-
-            // 回退公共配置
-            com.ainovel.server.domain.model.PublicModelConfig pub = publicModelConfigService
-                    .findById(configId)
-                    .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
-                    .blockOptional()
-                    .orElse(null);
-            if (pub != null && Boolean.TRUE.equals(pub.getEnabled())) {
-                String apiKey = publicModelConfigService
-                        .getActiveDecryptedApiKey(pub.getProvider(), pub.getModelId())
-                        .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
-                        .block();
-                AIModelProvider provider = providerFactory.createProvider(pub.getProvider(), pub.getModelId(), apiKey, pub.getApiEndpoint());
-                return wrapWithBilling(provider);
-            }
-        } catch (Exception e) {
-            log.error("createProviderByConfigId failed: userId={}, configId={}, err={}", userId, configId, e.getMessage());
-        }
-        throw new IllegalArgumentException("无法根据配置ID创建Provider: " + configId);
+        // 同步阻塞版本，保留向后兼容，但不推荐在 Reactor 流中使用
+        return createProviderByConfigIdAsync(userId, configId)
+                .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
+                .block();
+    }
+    
+    @Override
+    public Mono<AIModelProvider> createProviderByConfigIdAsync(String userId, String configId) {
+        // 优先用户私有配置
+        return userAIModelConfigService.getConfigurationById(userId, configId)
+                .filter(userCfg -> userCfg != null && Boolean.TRUE.equals(userCfg.getIsValidated()))
+                .flatMap(userCfg -> {
+                    String apiKey = null;
+                    try {
+                        apiKey = encryptor.decrypt(userCfg.getApiKey());
+                    } catch (Exception ignore) {
+                        log.warn("解密用户配置API Key失败: configId={}", configId);
+                    }
+                    AIModelProvider provider = providerFactory.createProvider(
+                            userCfg.getProvider(), userCfg.getModelName(), apiKey, userCfg.getApiEndpoint());
+                    return Mono.just(wrapWithBilling(provider));
+                })
+                .switchIfEmpty(Mono.defer(() -> {
+                    // 回退公共配置
+                    log.info("尝试使用公共模型解析: {}", configId);
+                    return publicModelConfigService.findById(configId)
+                            .filter(pub -> pub != null && Boolean.TRUE.equals(pub.getEnabled()))
+                            .flatMap(pub -> publicModelConfigService
+                                    .getActiveDecryptedApiKey(pub.getProvider(), pub.getModelId())
+                                    .map(apiKey -> {
+                                        AIModelProvider provider = providerFactory.createProvider(
+                                                pub.getProvider(), pub.getModelId(), apiKey, pub.getApiEndpoint());
+                                        return wrapWithBilling(provider);
+                                    }));
+                }))
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("无法根据配置ID创建Provider: " + configId)))
+                .doOnError(e -> log.error("createProviderByConfigIdAsync failed: userId={}, configId={}, err={}", 
+                        userId, configId, e.getMessage()));
     }
 
     private AIModelProvider wrapWithBilling(AIModelProvider base) {

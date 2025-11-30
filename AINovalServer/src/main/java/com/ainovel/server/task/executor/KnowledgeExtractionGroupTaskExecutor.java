@@ -163,15 +163,15 @@ public class KnowledgeExtractionGroupTaskExecutor
                 types.stream().map(KnowledgeExtractionType::getValue).collect(Collectors.toList()),
                 parameters.getContent().length());
         
-        return Mono.fromCallable(() -> {
-                    // ✅ 根据模型类型决定是否传递userId
-                    // - user: 需要userId查找用户私有配置
-                    // - public: 不需要userId，直接查找公共配置
-                    String userId = "user".equals(parameters.getModelType()) ? context.getUserId() : null;
-                    log.info("创建AI Provider: modelType={}, userId={}, configId={}", 
-                            parameters.getModelType(), userId, parameters.getModelConfigId());
-                    return aiService.createProviderByConfigId(userId, parameters.getModelConfigId());
-                })
+        // ✅ 根据模型类型决定是否传递userId
+        // - user: 需要userId查找用户私有配置
+        // - public: 不需要userId，直接查找公共配置
+        String userId = "user".equals(parameters.getModelType()) ? context.getUserId() : null;
+        log.info("创建AI Provider: modelType={}, userId={}, configId={}", 
+                parameters.getModelType(), userId, parameters.getModelConfigId());
+        
+        // ✅ 使用响应式方法创建 Provider，避免阻塞
+        return aiService.createProviderByConfigIdAsync(userId, parameters.getModelConfigId())
                 .flatMap(provider -> {
                     // 创建知识提取策略
                     KnowledgeExtractionStrategy strategy = new KnowledgeExtractionStrategy(provider, objectMapper);

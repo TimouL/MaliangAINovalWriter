@@ -120,12 +120,25 @@ public interface AIService {
     // 已废弃并删除实现：请使用 createProviderByConfigId
 
     /**
-     * 根据配置ID创建AI模型提供商（统一入口）。
+     * 根据配置ID创建AI模型提供商（统一入口，同步阻塞版本）。
      * - 优先解析用户私有配置；不存在则回退公共配置
      * - 自动解密/获取API Key与Endpoint
      * - 自动挂载装饰器链（Billing→Tracing→Provider）
+     * 
+     * @deprecated 请使用 {@link #createProviderByConfigIdAsync(String, String)} 响应式版本，
+     *             避免在 Reactor 线程中阻塞
      */
+    @Deprecated
     AIModelProvider createProviderByConfigId(String userId, String configId);
+    
+    /**
+     * 根据配置ID创建AI模型提供商（响应式版本，推荐使用）。
+     * - 优先解析用户私有配置；不存在则回退公共配置
+     * - 自动解密/获取API Key与Endpoint
+     * - 自动挂载装饰器链（Billing→Tracing→Provider）
+     * - 完全非阻塞，适合在 Reactor 流中使用
+     */
+    reactor.core.publisher.Mono<AIModelProvider> createProviderByConfigIdAsync(String userId, String configId);
 
     /**
      * 设置是否使用LangChain4j实现 (全局配置)
