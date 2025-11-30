@@ -4,6 +4,7 @@ import com.ainovel.server.domain.model.*;
 import com.ainovel.server.repository.NovelKnowledgeBaseRepository;
 import com.ainovel.server.repository.UserKnowledgeBaseRelationRepository;
 import com.ainovel.server.service.FanqieNovelImportRecordService;
+import com.ainovel.server.service.IndexingService;
 import com.ainovel.server.service.fanqie.FanqieNovelService;
 import com.ainovel.server.task.BackgroundTaskExecutable;
 import com.ainovel.server.task.TaskContext;
@@ -50,6 +51,7 @@ public class KnowledgeExtractionTaskExecutor implements BackgroundTaskExecutable
     private final com.ainovel.server.repository.NovelRepository novelRepository;
     private final com.ainovel.server.service.ImportService importService;
     private final SubTaskCompletionService subTaskCompletionService;
+    private final IndexingService indexingService;
     
     // 拆书任务并发限制：最多允许5个拆书任务同时执行
     // 避免过多并发导致数据库连接和外部API压力过大
@@ -1032,6 +1034,15 @@ public class KnowledgeExtractionTaskExecutor implements BackgroundTaskExecutable
                     
                     // 保存Scene内容，并更新Chapter的sceneIds
                     return sceneRepository.save(scene)
+                            .flatMap(savedScene -> {
+                                // ✅ 修复向量化链路：保存后立即索引到Chroma向量库
+                                return indexingService.indexScene(savedScene)
+                                        .doOnSuccess(v -> log.info("✅ Scene向量化成功: {}", savedScene.getTitle()))
+                                        .doOnError(e -> log.warn("⚠️ Scene向量化失败(不影响主流程): {}, error={}", 
+                                                savedScene.getTitle(), e.getMessage()))
+                                        .onErrorResume(e -> Mono.empty()) // 向量化失败不阻断主流程
+                                        .thenReturn(savedScene);
+                            })
                             .flatMap(savedScene -> {
                                 // 更新Chapter的sceneIds
                                 List<String> sceneIds = new ArrayList<>();
