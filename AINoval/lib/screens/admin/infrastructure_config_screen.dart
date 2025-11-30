@@ -52,10 +52,21 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
   int _mongoPoolMinSize = 5;
   int _mongoPoolMaxWaitTime = 10;
   int _mongoPoolMaxIdleTime = 60;
+  String _mongoPoolSource = 'default'; // 配置来源: env/config/default
+  bool _isEditingMongo = false;
   
   // 任务系统配置
   String _taskTransport = 'local';
   int _taskLocalConcurrency = 2000;
+  String _taskConfigSource = 'default'; // 配置来源: env/config/default
+  bool _isEditingTask = false;
+  
+  // 编辑表单控制器
+  final _mongoMaxSizeController = TextEditingController();
+  final _mongoMinSizeController = TextEditingController();
+  final _mongoMaxWaitTimeController = TextEditingController();
+  final _mongoMaxIdleTimeController = TextEditingController();
+  final _taskConcurrencyController = TextEditingController();
   
   static const List<String> _logLevels = ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR'];
 
@@ -74,6 +85,11 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
     _ossBucketNameController.dispose();
     _chromaUrlController.dispose();
     _chromaTokenController.dispose();
+    _mongoMaxSizeController.dispose();
+    _mongoMinSizeController.dispose();
+    _mongoMaxWaitTimeController.dispose();
+    _mongoMaxIdleTimeController.dispose();
+    _taskConcurrencyController.dispose();
     super.dispose();
   }
 
@@ -108,14 +124,16 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
         _chromaTokenValue = chromaConfig?['authToken'] ?? configData['chromaAuthToken'] ?? '';
         
         // 设置 MongoDB 连接池配置
-        _mongoPoolMaxSize = configData['mongoPoolMaxSize'] ?? 100;
-        _mongoPoolMinSize = configData['mongoPoolMinSize'] ?? 10;
-        _mongoPoolMaxWaitTime = configData['mongoPoolMaxWaitTime'] ?? 30;
+        _mongoPoolMaxSize = configData['mongoPoolMaxSize'] ?? 50;
+        _mongoPoolMinSize = configData['mongoPoolMinSize'] ?? 5;
+        _mongoPoolMaxWaitTime = configData['mongoPoolMaxWaitTime'] ?? 10;
         _mongoPoolMaxIdleTime = configData['mongoPoolMaxIdleTime'] ?? 60;
+        _mongoPoolSource = configData['mongoPoolSource'] ?? 'default';
         
         // 设置任务系统配置
         _taskTransport = configData['taskTransport'] ?? 'local';
         _taskLocalConcurrency = configData['taskLocalConcurrency'] ?? 2000;
+        _taskConfigSource = configData['taskConfigSource'] ?? 'default';
         
         _isLoading = false;
       });
@@ -211,21 +229,41 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(
-                  connected ? Icons.check_circle : Icons.error,
-                  color: connected ? Colors.green : Colors.red,
+                Row(
+                  children: [
+                    Icon(
+                      connected ? Icons.check_circle : Icons.error,
+                      color: connected ? Colors.green : Colors.red,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'MongoDB 数据库',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(width: 8),
+                    Chip(
+                      label: const Text('需重启生效'),
+                      backgroundColor: Colors.orange.shade100,
+                      labelStyle: const TextStyle(fontSize: 10),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildSourceChip(_mongoPoolSource),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                const Text(
-                  'MongoDB 数据库',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(width: 8),
-                Chip(
-                  label: const Text('需重启生效'),
-                  backgroundColor: Colors.orange.shade100,
-                  labelStyle: const TextStyle(fontSize: 10),
+                TextButton.icon(
+                  onPressed: () {
+                    if (!_isEditingMongo) {
+                      _mongoMaxSizeController.text = '$_mongoPoolMaxSize';
+                      _mongoMinSizeController.text = '$_mongoPoolMinSize';
+                      _mongoMaxWaitTimeController.text = '$_mongoPoolMaxWaitTime';
+                      _mongoMaxIdleTimeController.text = '$_mongoPoolMaxIdleTime';
+                    }
+                    setState(() => _isEditingMongo = !_isEditingMongo);
+                  },
+                  icon: Icon(_isEditingMongo ? Icons.close : Icons.edit),
+                  label: Text(_isEditingMongo ? '取消' : '编辑'),
                 ),
               ],
             ),
@@ -240,28 +278,120 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
               ),
             ),
             // 连接池配置
-            ExpansionTile(
-              leading: const Icon(Icons.pool),
-              title: const Text('连接池配置'),
-              subtitle: Text('最大 $_mongoPoolMaxSize / 最小 $_mongoPoolMinSize'),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Column(
+            if (!_isEditingMongo) ...[
+              ExpansionTile(
+                leading: const Icon(Icons.pool),
+                title: const Text('连接池配置'),
+                subtitle: Text('最大 $_mongoPoolMaxSize / 最小 $_mongoPoolMinSize'),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Column(
+                      children: [
+                        _buildPoolConfigRow('最大连接数', '$_mongoPoolMaxSize', 
+                          '同时允许的最大数据库连接数'),
+                        _buildPoolConfigRow('最小连接数', '$_mongoPoolMinSize', 
+                          '连接池维护的最小空闲连接数'),
+                        _buildPoolConfigRow('等待超时', '$_mongoPoolMaxWaitTime 秒', 
+                          '获取连接的最大等待时间'),
+                        _buildPoolConfigRow('空闲超时', '$_mongoPoolMaxIdleTime 秒', 
+                          '空闲连接自动关闭时间'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ] else ...[
+              const SizedBox(height: 16),
+              if (_mongoPoolSource == 'env') ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.amber.shade200),
+                  ),
+                  child: Row(
                     children: [
-                      _buildPoolConfigRow('最大连接数', '$_mongoPoolMaxSize', 
-                        '同时允许的最大数据库连接数'),
-                      _buildPoolConfigRow('最小连接数', '$_mongoPoolMinSize', 
-                        '连接池维护的最小空闲连接数'),
-                      _buildPoolConfigRow('等待超时', '$_mongoPoolMaxWaitTime 秒', 
-                        '获取连接的最大等待时间'),
-                      _buildPoolConfigRow('空闲超时', '$_mongoPoolMaxIdleTime 秒', 
-                        '空闲连接自动关闭时间'),
+                      Icon(Icons.warning_amber, color: Colors.amber.shade700),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          '当前配置来自环境变量，修改后保存到配置文件，但重启后仍会优先使用环境变量。',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
               ],
-            ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _mongoMaxSizeController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: '最大连接数',
+                        border: OutlineInputBorder(),
+                        helperText: '建议: Atlas M0 不超过50',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _mongoMinSizeController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: '最小连接数',
+                        border: OutlineInputBorder(),
+                        helperText: '建议: 5-10',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _mongoMaxWaitTimeController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: '等待超时 (秒)',
+                        border: OutlineInputBorder(),
+                        helperText: '建议: 10-30',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _mongoMaxIdleTimeController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: '空闲超时 (秒)',
+                        border: OutlineInputBorder(),
+                        helperText: '建议: 60',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  ElevatedButton(
+                    onPressed: _saveMongoPoolConfig,
+                    child: const Text('保存'),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 8),
             Text(
               '提示：连接池配置可通过环境变量修改，如 SPRING_DATA_MONGODB_POOL_MAX_SIZE',
@@ -271,6 +401,61 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
         ),
       ),
     );
+  }
+  
+  Widget _buildSourceChip(String source) {
+    String label;
+    Color color;
+    switch (source) {
+      case 'env':
+        label = '环境变量';
+        color = Colors.blue.shade100;
+        break;
+      case 'config':
+        label = '配置文件';
+        color = Colors.green.shade100;
+        break;
+      default:
+        label = '默认值';
+        color = Colors.grey.shade200;
+    }
+    return Chip(
+      label: Text(label, style: const TextStyle(fontSize: 10)),
+      backgroundColor: color,
+      visualDensity: VisualDensity.compact,
+    );
+  }
+  
+  Future<void> _saveMongoPoolConfig() async {
+    try {
+      final response = await _apiClient.put('/admin/config/mongo-pool', data: {
+        'maxSize': int.tryParse(_mongoMaxSizeController.text),
+        'minSize': int.tryParse(_mongoMinSizeController.text),
+        'maxWaitTime': int.tryParse(_mongoMaxWaitTimeController.text),
+        'maxIdleTime': int.tryParse(_mongoMaxIdleTimeController.text),
+      });
+      
+      if (mounted) {
+        final success = response['success'] ?? false;
+        final message = response['message'] ?? (success ? '保存成功' : '保存失败');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: success ? Colors.green : Colors.red,
+          ),
+        );
+        if (success) {
+          setState(() => _isEditingMongo = false);
+          _loadConfig();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('保存失败: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Widget _buildPoolConfigRow(String label, String value, String tooltip) {
@@ -303,42 +488,116 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(
-                  Icons.settings_applications,
-                  color: Colors.teal.shade700,
+                Row(
+                  children: [
+                    Icon(
+                      Icons.settings_applications,
+                      color: Colors.teal.shade700,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      '任务系统',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(width: 8),
+                    Chip(
+                      label: const Text('需重启生效'),
+                      backgroundColor: Colors.orange.shade100,
+                      labelStyle: const TextStyle(fontSize: 10),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildSourceChip(_taskConfigSource),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                const Text(
-                  '任务系统',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(width: 8),
-                Chip(
-                  label: const Text('需重启生效'),
-                  backgroundColor: Colors.orange.shade100,
-                  labelStyle: const TextStyle(fontSize: 10),
+                TextButton.icon(
+                  onPressed: () {
+                    if (!_isEditingTask) {
+                      _taskConcurrencyController.text = '$_taskLocalConcurrency';
+                    }
+                    setState(() => _isEditingTask = !_isEditingTask);
+                  },
+                  icon: Icon(_isEditingTask ? Icons.close : Icons.edit),
+                  label: Text(_isEditingTask ? '取消' : '编辑'),
                 ),
               ],
             ),
             const Divider(),
-            ListTile(
-              leading: const Icon(Icons.swap_horiz),
-              title: const Text('传输模式'),
-              subtitle: Text(_taskTransport == 'local' ? '本地模式' : 'RabbitMQ 分布式'),
-              trailing: Chip(
-                label: Text(_taskTransport == 'local' ? '单机' : '集群'),
-                backgroundColor: _taskTransport == 'local' 
-                    ? Colors.blue.shade100 
-                    : Colors.purple.shade100,
+            if (!_isEditingTask) ...[
+              ListTile(
+                leading: const Icon(Icons.swap_horiz),
+                title: const Text('传输模式'),
+                subtitle: Text(_taskTransport == 'local' ? '本地模式' : 'RabbitMQ 分布式'),
+                trailing: Chip(
+                  label: Text(_taskTransport == 'local' ? '单机' : '集群'),
+                  backgroundColor: _taskTransport == 'local' 
+                      ? Colors.blue.shade100 
+                      : Colors.purple.shade100,
+                ),
               ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.speed),
-              title: const Text('并发数'),
-              subtitle: Text('最大 $_taskLocalConcurrency 个并发任务'),
-              trailing: _getConcurrencyChip(),
-            ),
+              ListTile(
+                leading: const Icon(Icons.speed),
+                title: const Text('并发数'),
+                subtitle: Text('最大 $_taskLocalConcurrency 个并发任务'),
+                trailing: _getConcurrencyChip(),
+              ),
+            ] else ...[
+              const SizedBox(height: 16),
+              if (_taskConfigSource == 'env') ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.amber.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber, color: Colors.amber.shade700),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          '当前配置来自环境变量，修改后保存到配置文件，但重启后仍会优先使用环境变量。',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(value: 'local', label: Text('本地模式')),
+                  ButtonSegment(value: 'rabbitmq', label: Text('RabbitMQ')),
+                ],
+                selected: {_taskTransport},
+                onSelectionChanged: (value) {
+                  setState(() => _taskTransport = value.first);
+                },
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _taskConcurrencyController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: '并发数',
+                  border: OutlineInputBorder(),
+                  helperText: '建议: 低配100-200, 中配500-1000, 高配2000+',
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  ElevatedButton(
+                    onPressed: _saveTaskConfig,
+                    child: const Text('保存'),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 8),
             Text(
               '说明：任务系统用于处理拆书、知识提取等后台任务。\n'
@@ -354,6 +613,36 @@ class _InfrastructureConfigScreenState extends State<InfrastructureConfigScreen>
         ),
       ),
     );
+  }
+  
+  Future<void> _saveTaskConfig() async {
+    try {
+      final response = await _apiClient.put('/admin/config/task', data: {
+        'transport': _taskTransport,
+        'localConcurrency': int.tryParse(_taskConcurrencyController.text),
+      });
+      
+      if (mounted) {
+        final success = response['success'] ?? false;
+        final message = response['message'] ?? (success ? '保存成功' : '保存失败');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: success ? Colors.green : Colors.red,
+          ),
+        );
+        if (success) {
+          setState(() => _isEditingTask = false);
+          _loadConfig();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('保存失败: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Widget _getConcurrencyChip() {

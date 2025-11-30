@@ -13,7 +13,9 @@ import com.ainovel.server.config.infrastructure.InfrastructureStatusManager;
 import com.ainovel.server.service.setup.InfrastructureConfigService;
 import com.ainovel.server.service.setup.InfrastructureConfigService.ChromaConfigUpdate;
 import com.ainovel.server.service.setup.InfrastructureConfigService.InfrastructureConfigDTO;
+import com.ainovel.server.service.setup.InfrastructureConfigService.MongoPoolConfigUpdate;
 import com.ainovel.server.service.setup.InfrastructureConfigService.StorageConfigUpdate;
+import com.ainovel.server.service.setup.InfrastructureConfigService.TaskConfigUpdate;
 import com.ainovel.server.service.setup.SetupService;
 
 import reactor.core.publisher.Mono;
@@ -127,6 +129,38 @@ public class InfrastructureConfigController {
     public Mono<ResponseEntity<ReloadResponse>> reloadStorage() {
         // 存储配置重载需要重启
         return Mono.just(ResponseEntity.ok(new ReloadResponse(false, "存储配置需要重启应用后生效")));
+    }
+
+    /**
+     * 更新 MongoDB 连接池配置
+     * PUT /api/v1/admin/config/mongo-pool
+     */
+    @PutMapping(value = "/mongo-pool",
+                consumes = MediaType.APPLICATION_JSON_VALUE,
+                produces = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<ResponseEntity<UpdateResponse>> updateMongoPool(@RequestBody MongoPoolConfigUpdate update) {
+        return configService.updateMongoPoolConfig(update)
+            .map(success -> ResponseEntity.ok(new UpdateResponse(
+                success,
+                success ? "MongoDB 连接池配置已保存到配置文件，需要重启应用后生效。注意：如果环境变量已设置，将优先使用环境变量配置。" : "更新失败",
+                false // 需要重启
+            )));
+    }
+
+    /**
+     * 更新任务系统配置
+     * PUT /api/v1/admin/config/task
+     */
+    @PutMapping(value = "/task",
+                consumes = MediaType.APPLICATION_JSON_VALUE,
+                produces = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<ResponseEntity<UpdateResponse>> updateTask(@RequestBody TaskConfigUpdate update) {
+        return configService.updateTaskConfig(update)
+            .map(success -> ResponseEntity.ok(new UpdateResponse(
+                success,
+                success ? "任务系统配置已保存到配置文件，需要重启应用后生效。注意：如果环境变量已设置，将优先使用环境变量配置。" : "更新失败",
+                false // 需要重启
+            )));
     }
 
     // Response Records

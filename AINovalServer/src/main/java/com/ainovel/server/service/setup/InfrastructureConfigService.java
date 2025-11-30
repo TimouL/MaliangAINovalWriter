@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 import com.ainovel.server.config.infrastructure.InfrastructureStatusManager;
@@ -32,6 +33,7 @@ public class InfrastructureConfigService {
 
     private final ObjectMapper objectMapper;
     private final InfrastructureStatusManager statusManager;
+    private final Environment environment;
     
     // 从环境变量/配置注入 Chroma 配置
     @Value("${vectorstore.chroma.enabled:false}")
@@ -64,9 +66,29 @@ public class InfrastructureConfigService {
     private String taskTransport;
 
     @Autowired
-    public InfrastructureConfigService(ObjectMapper objectMapper, InfrastructureStatusManager statusManager) {
+    public InfrastructureConfigService(ObjectMapper objectMapper, InfrastructureStatusManager statusManager, Environment environment) {
         this.objectMapper = objectMapper;
         this.statusManager = statusManager;
+        this.environment = environment;
+    }
+    
+    /**
+     * 检测配置来源
+     * @param envVarName 环境变量名
+     * @return "env" 如果是环境变量, "config" 如果是配置文件, "default" 如果是默认值
+     */
+    private String detectConfigSource(String envVarName) {
+        // 检查系统环境变量
+        String envValue = System.getenv(envVarName);
+        if (envValue != null && !envValue.isEmpty()) {
+            return "env";
+        }
+        // 检查 Spring Environment（可能来自配置文件）
+        String propValue = environment.getProperty(envVarName);
+        if (propValue != null && !propValue.isEmpty()) {
+            return "config";
+        }
+        return "default";
     }
 
     /**
@@ -103,15 +125,17 @@ public class InfrastructureConfigService {
         }
         dto.setMongoConnected(statusManager.isMongoConnected());
         
-        // MongoDB 连接池配置
+        // MongoDB 连接池配置及来源
         dto.setMongoPoolMaxSize(this.mongoPoolMaxSize);
         dto.setMongoPoolMinSize(this.mongoPoolMinSize);
         dto.setMongoPoolMaxWaitTime(this.mongoPoolMaxWaitTime);
         dto.setMongoPoolMaxIdleTime(this.mongoPoolMaxIdleTime);
+        dto.setMongoPoolSource(detectConfigSource("SPRING_DATA_MONGODB_POOL_MAX_SIZE"));
         
-        // 任务系统配置
+        // 任务系统配置及来源
         dto.setTaskTransport(this.taskTransport);
         dto.setTaskLocalConcurrency(this.taskLocalConcurrency);
+        dto.setTaskConfigSource(detectConfigSource("TASK_LOCAL_CONCURRENCY"));
 
         // 存储配置
         if (config.has("storage")) {
@@ -228,6 +252,72 @@ public class InfrastructureConfigService {
     }
 
     /**
+     * 更新 MongoDB 连接池配置
+     */
+    public Mono<Boolean> updateMongoPoolConfig(MongoPoolConfigUpdate update) {
+        return Mono.fromCallable(() -> {
+            try {
+                JsonNode config = readConfig();
+                ObjectNode root = (ObjectNode) config;
+                ObjectNode mongoPool = root.has("mongoPool") 
+                    ? (ObjectNode) root.get("mongoPool") 
+                    : root.putObject("mongoPool");
+
+                if (update.maxSize() != null) {
+                    mongoPool.put("maxSize", update.maxSize());
+                }
+                if (update.minSize() != null) {
+                    mongoPool.put("minSize", update.minSize());
+                }
+                if (update.maxWaitTime() != null) {
+                    mongoPool.put("maxWaitTime", update.maxWaitTime());
+                }
+                if (update.maxIdleTime() != null) {
+                    mongoPool.put("maxIdleTime", update.maxIdleTime());
+                }
+
+                root.put("lastModified", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                writeConfig(root);
+                log.info("MongoDB 连接池配置已更新: maxSize={}, minSize={}", update.maxSize(), update.minSize());
+                return true;
+            } catch (Exception e) {
+                log.error("更新 MongoDB 连接池配置失败: {}", e.getMessage(), e);
+                return false;
+            }
+        });
+    }
+
+    /**
+     * 更新任务系统配置
+     */
+    public Mono<Boolean> updateTaskConfig(TaskConfigUpdate update) {
+        return Mono.fromCallable(() -> {
+            try {
+                JsonNode config = readConfig();
+                ObjectNode root = (ObjectNode) config;
+                ObjectNode task = root.has("task") 
+                    ? (ObjectNode) root.get("task") 
+                    : root.putObject("task");
+
+                if (update.transport() != null) {
+                    task.put("transport", update.transport());
+                }
+                if (update.localConcurrency() != null) {
+                    task.put("localConcurrency", update.localConcurrency());
+                }
+
+                root.put("lastModified", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                writeConfig(root);
+                log.info("任务系统配置已更新: transport={}, concurrency={}", update.transport(), update.localConcurrency());
+                return true;
+            } catch (Exception e) {
+                log.error("更新任务系统配置失败: {}", e.getMessage(), e);
+                return false;
+            }
+        });
+    }
+
+    /**
      * 读取配置文件
      */
     private JsonNode readConfig() throws Exception {
@@ -286,6 +376,7 @@ public class InfrastructureConfigService {
         private int mongoPoolMinSize;
         private int mongoPoolMaxWaitTime;
         private int mongoPoolMaxIdleTime;
+        private String mongoPoolSource; // 配置来源: env/config/default
         // 存储配置
         private String storageProvider;
         private String localStoragePath;
@@ -299,6 +390,7 @@ public class InfrastructureConfigService {
         // 任务系统配置
         private String taskTransport;
         private int taskLocalConcurrency;
+        private String taskConfigSource; // 配置来源: env/config/default
         // 元数据
         private boolean setupCompleted;
         private String lastModified;
@@ -312,8 +404,10 @@ public class InfrastructureConfigService {
             dto.setMongoPoolMinSize(5);
             dto.setMongoPoolMaxWaitTime(10);
             dto.setMongoPoolMaxIdleTime(60);
+            dto.setMongoPoolSource("default");
             dto.setTaskTransport("local");
             dto.setTaskLocalConcurrency(2000);
+            dto.setTaskConfigSource("default");
             return dto;
         }
 
@@ -330,6 +424,8 @@ public class InfrastructureConfigService {
         public void setMongoPoolMaxWaitTime(int mongoPoolMaxWaitTime) { this.mongoPoolMaxWaitTime = mongoPoolMaxWaitTime; }
         public int getMongoPoolMaxIdleTime() { return mongoPoolMaxIdleTime; }
         public void setMongoPoolMaxIdleTime(int mongoPoolMaxIdleTime) { this.mongoPoolMaxIdleTime = mongoPoolMaxIdleTime; }
+        public String getMongoPoolSource() { return mongoPoolSource; }
+        public void setMongoPoolSource(String mongoPoolSource) { this.mongoPoolSource = mongoPoolSource; }
         // Getters and Setters - Storage
         public String getStorageProvider() { return storageProvider; }
         public void setStorageProvider(String storageProvider) { this.storageProvider = storageProvider; }
@@ -353,6 +449,8 @@ public class InfrastructureConfigService {
         public void setTaskTransport(String taskTransport) { this.taskTransport = taskTransport; }
         public int getTaskLocalConcurrency() { return taskLocalConcurrency; }
         public void setTaskLocalConcurrency(int taskLocalConcurrency) { this.taskLocalConcurrency = taskLocalConcurrency; }
+        public String getTaskConfigSource() { return taskConfigSource; }
+        public void setTaskConfigSource(String taskConfigSource) { this.taskConfigSource = taskConfigSource; }
         // Getters and Setters - Metadata
         public boolean isSetupCompleted() { return setupCompleted; }
         public void setSetupCompleted(boolean setupCompleted) { this.setupCompleted = setupCompleted; }
@@ -373,5 +471,17 @@ public class InfrastructureConfigService {
         boolean enabled,
         String url,
         String authToken
+    ) {}
+
+    public record MongoPoolConfigUpdate(
+        Integer maxSize,
+        Integer minSize,
+        Integer maxWaitTime,
+        Integer maxIdleTime
+    ) {}
+
+    public record TaskConfigUpdate(
+        String transport,
+        Integer localConcurrency
     ) {}
 }
